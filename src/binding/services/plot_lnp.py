@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import csv
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,8 @@ PANEL_LABEL_FONTSIZE = 20
 AXIS_LABEL_FONTSIZE = 16
 TICK_LABEL_FONTSIZE = 14
 MEDIAN_LABEL_FONTSIZE = 14
+MERGE_COLOR = "#6a0572"
+MERGE_HOLD_FRAMES = 8
 
 
 @dataclass(frozen=True)
@@ -86,6 +89,117 @@ def intensity_to_radius(intensity: float) -> float:
     return float(np.clip(2.0 + 14.0 * (s - 2000.0) / 14000.0, 2.0, 16.0))
 
 
+def read_merge_events_by_roi(path: Path) -> dict[int, list[dict[str, str]]]:
+    """Load strict merge events grouped by ROI from cluster_merge_events_strict.csv."""
+    grouped: dict[int, list[dict[str, str]]] = {}
+    with path.open(newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        if reader.fieldnames is None:
+            return grouped
+        for row in reader:
+            roi = int(row["roi"])
+            grouped.setdefault(roi, []).append(row)
+    for roi in grouped:
+        grouped[roi].sort(key=lambda row: int(row["time"]))
+    return grouped
+
+
+def _parse_source_indices(raw: str) -> list[int]:
+    return [int(value) for value in ast.literal_eval(raw)]
+
+
+def _draw_merge_annotations(
+    axis,
+    time_index: int,
+    merge_events: list[dict[str, str]],
+    spots_by_t: dict[int, list[dict[str, str]]],
+) -> None:
+    for event in merge_events:
+        prev_time = int(event["prev_time"])
+        merge_time = int(event["time"])
+        if time_index < prev_time or time_index > merge_time + MERGE_HOLD_FRAMES:
+            continue
+
+        source_indices = _parse_source_indices(str(event["source_indices"]))
+        prev_spots = spots_by_t.get(prev_time, [])
+        source_xy: list[tuple[float, float]] = []
+        for index in source_indices:
+            if index < len(prev_spots):
+                row = prev_spots[index]
+                source_xy.append((float(row["x"]), float(row["y"])))
+
+        target_xy = (float(event["x"]), float(event["y"]))
+        target_radius = intensity_to_radius(float(event.get("intensity", 5000.0)))
+        fade = max(0.35, 1.0 - 0.08 * (time_index - merge_time))
+
+        if time_index >= prev_time:
+            for x, y in source_xy:
+                axis.add_patch(
+                    patches.Circle(
+                        (x, y),
+                        radius=7.0,
+                        fill=False,
+                        edgecolor=MERGE_COLOR,
+                        linewidth=1.8,
+                        linestyle="--",
+                        alpha=0.85 if time_index <= merge_time else 0.45,
+                        zorder=6,
+                    )
+                )
+
+        if time_index >= merge_time:
+            for x, y in source_xy:
+                axis.annotate(
+                    "",
+                    xy=target_xy,
+                    xytext=(x, y),
+                    arrowprops={
+                        "arrowstyle": "->",
+                        "color": MERGE_COLOR,
+                        "lw": 1.8,
+                        "alpha": fade,
+                        "shrinkA": 6,
+                        "shrinkB": target_radius + 2,
+                    },
+                    zorder=7,
+                )
+            axis.add_patch(
+                patches.Circle(
+                    target_xy,
+                    radius=target_radius + 3.0,
+                    fill=True,
+                    facecolor=MERGE_COLOR,
+                    edgecolor="white",
+                    linewidth=1.4,
+                    alpha=0.28 * fade,
+                    zorder=8,
+                )
+            )
+            axis.add_patch(
+                patches.Circle(
+                    target_xy,
+                    radius=target_radius + 3.0,
+                    fill=False,
+                    edgecolor=MERGE_COLOR,
+                    linewidth=2.4,
+                    alpha=fade,
+                    zorder=9,
+                )
+            )
+            if time_index == merge_time:
+                axis.text(
+                    target_xy[0],
+                    target_xy[1] - 14.0,
+                    "merge",
+                    color=MERGE_COLOR,
+                    fontsize=8,
+                    ha="center",
+                    va="bottom",
+                    fontweight="bold",
+                    zorder=10,
+                )
+
+
 def _load_spots_for_roi(filtered_dir: Path, roi: int, n_times: int) -> dict[int, list[dict[str, str]]]:
     spots: dict[int, list[dict[str, str]]] = {}
     for ti in range(n_times):
@@ -106,6 +220,8 @@ def generate_b_movie(
     output_path: Path,
     channel: int = 1,
     fps: float = 12.0,
+    merge_events: list[dict[str, str]] | None = None,
+    time_interval: float = 4.0,
 ) -> None:
     """Create mp4 of figB (BF-derived contour + intensity-scaled spot circles) over time for one ROI."""
     import matplotlib
@@ -119,6 +235,10 @@ def generate_b_movie(
     n_times = int(fluo_stack.shape[0])
     spots_by_t = _load_spots_for_roi(filtered_dir, roi, n_times)
     h, w = fluo_stack.shape[1:3] if fluo_stack.ndim == 3 else fluo_stack.shape[-2:]
+    contours_by_t = {
+        ti: cellpose_contours_from_bf(np.asarray(bf_stack[ti], dtype=np.float64))
+        for ti in range(n_times)
+    }
 
     dpi = 72
     fig, ax = plt.subplots(figsize=(max(3.0, w / dpi), max(3.0, h / dpi)), dpi=dpi)
@@ -128,9 +248,7 @@ def generate_b_movie(
 
     def _draw_frame(ti: int) -> None:
         ax.clear()
-        fluo = np.asarray(fluo_stack[ti])
-        bf = np.asarray(bf_stack[ti], dtype=np.float64)
-        conts = cellpose_contours_from_bf(bf)
+        conts = contours_by_t[ti]
         bg = np.zeros((h, w), dtype=np.float32)
         ax.imshow(bg, cmap="gray", vmin=0, vmax=1, interpolation="nearest")
         ax.set_facecolor("black")
@@ -142,11 +260,26 @@ def generate_b_movie(
             y = float(row["y"])
             r = intensity_to_radius(float(row.get("intensity", 5000.0)))
             ax.add_patch(patches.Circle((x, y), radius=r, fill=False, edgecolor="#ffeb3b", linewidth=1.2))
+        if merge_events:
+            _draw_merge_annotations(ax, ti, merge_events, spots_by_t)
         ax.set_xlim(-0.5, w - 0.5)
         ax.set_ylim(h - 0.5, -0.5)
         ax.set_aspect("equal")
         ax.axis("off")
-        ax.text(0.01, 0.99, f"roi{roi:02d} t={ti}", transform=ax.transAxes, color="#cccccc", fontsize=7, va="top")
+        t_min = ti * time_interval / 60.0
+        label = f"roi{roi:02d}  t={ti}  ({t_min:.1f} min)"
+        ax.text(0.01, 0.99, label, transform=ax.transAxes, color="#cccccc", fontsize=7, va="top")
+        if merge_events:
+            ax.text(
+                0.99,
+                0.99,
+                f"{len(merge_events)} merge(s)",
+                transform=ax.transAxes,
+                color=MERGE_COLOR,
+                fontsize=7,
+                ha="right",
+                va="top",
+            )
 
     def update(ti: int):
         _draw_frame(ti)
