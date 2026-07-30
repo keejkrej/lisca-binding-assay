@@ -4,7 +4,7 @@ set -euo pipefail
 
 SRC_DATA=/home/jack/data/lisca_review/fig5/20260324_1
 DATA=/home/jack/data/lisca_review/fig5/20260324_1_4s
-BINDING=/home/jack/workspace/binding
+BINDING=/home/jack/workspace/lisca-binding-assay
 TIME_INTERVAL=4
 LOG="$DATA/pipeline_4s.log"
 
