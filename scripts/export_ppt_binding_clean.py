@@ -105,11 +105,18 @@ SLIDE_LABEL = {
     "aiLNP": "aiLNP",
 }
 
-# Phase-I diffusion-limited √t asymptote from presentation theory export
-# (N ≈ a√t + b on 0 < t ≤ 30 min; see presentation/data/binding-theory.ts).
-SQRT_FIT_A = 19.114153
-SQRT_FIT_B = -33.454990
+# Phase-I window for empirical √t fit (min).
 PHASE_I_END_MIN = 30.0
+
+# First-principles planar Ward–Tordai (same material params as rd_binding_phases.py).
+# N_WT(t) = A_cell * 2 * c0 * sqrt(D t / π)
+_KB = 1.380649e-23
+_T_K = 310.15
+_ETA = 0.75e-3  # Pa·s
+_D_LNP = 100e-9  # m (diameter)
+_D_BULK = _KB * _T_K / (3.0 * np.pi * _ETA * _D_LNP)  # Stokes–Einstein
+_A_CELL = (30e-6) ** 2  # m² equal-area disk for 30 µm square
+_C0 = 2e14  # m⁻³ manuscript dose estimate
 
 FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 FONT_BOLD_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
@@ -634,22 +641,68 @@ def _style_axis(ax, *, ticksize: int = 12) -> None:
     ax.tick_params(axis="both", labelsize=ticksize)
 
 
-def diffusion_limited_curve(
-    t_max: float = PHASE_I_END_MIN,
+def fit_sqrt_asymptote(
+    t_min: np.ndarray,
+    n_mean: np.ndarray,
     *,
-    a: float = SQRT_FIT_A,
-    b: float = SQRT_FIT_B,
+    t_end: float = PHASE_I_END_MIN,
+) -> tuple[float, float, float]:
+    """Phase-I linear regression of N vs √t (with intercept).
+
+    Fits the plotted Onpattro (or any) mean series on 0 < t ≤ t_end:
+        N ≈ a √t + b
+    Returns (a, b, r2).
+    """
+    t = np.asarray(t_min, dtype=float)
+    n = np.asarray(n_mean, dtype=float)
+    mask = (t > 0.0) & (t <= t_end) & np.isfinite(n)
+    if np.count_nonzero(mask) < 3:
+        raise ValueError("Need ≥3 finite points in phase-I window for √t fit")
+    x = np.sqrt(t[mask])
+    y = n[mask]
+    design = np.vstack([x, np.ones_like(x)]).T
+    a, b = np.linalg.lstsq(design, y, rcond=None)[0]
+    pred = a * x + b
+    ss_tot = float(np.sum((y - y.mean()) ** 2)) or 1.0
+    ss_res = float(np.sum((y - pred) ** 2))
+    r2 = 1.0 - ss_res / ss_tot
+    return float(a), float(b), float(r2)
+
+
+def sqrt_asymptote_curve(
+    a: float,
+    b: float,
+    *,
+    t_max: float = PHASE_I_END_MIN,
     n: int = 80,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Early-stage diffusion-limited asymptote N ≈ a√t + b (repo phase-I fit)."""
+    """N = max(0, a√t + b) on [0, t_max]; leading zeros dropped."""
     t = np.linspace(0.0, min(t_max, PHASE_I_END_MIN), n)
     n_vals = np.maximum(0.0, a * np.sqrt(np.maximum(t, 0.0)) + b)
-    # Drop leading zeros so the line starts at first physical contact.
     mask = n_vals > 0
     if not np.any(mask):
         return t, n_vals
     i0 = int(np.argmax(mask))
     return t[i0:], n_vals[i0:]
+
+
+def ward_tordai_curve(
+    *,
+    t_max: float = PHASE_I_END_MIN,
+    n: int = 80,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Planar Ward–Tordai diffusion-limited adsorption (first principles).
+
+    N_WT(t) = A_cell · 2 · c0 · √(D t / π)
+    with Stokes–Einstein D (100 nm LNP, 37 °C), A_cell = (30 µm)², c0 from dose.
+    """
+    t_min = np.linspace(0.0, min(t_max, PHASE_I_END_MIN), n)
+    t_s = t_min * 60.0
+    n_vals = _A_CELL * 2.0 * _C0 * np.sqrt(np.maximum(_D_BULK * t_s / np.pi, 0.0))
+    # Drop exact zero at t=0 for cleaner dashed line start.
+    if len(t_min) > 1:
+        return t_min[1:], n_vals[1:]
+    return t_min, n_vals
 
 
 def _annotate_toward_axis(
@@ -661,20 +714,31 @@ def _annotate_toward_axis(
     x: float,
     y: float,
     fontsize: float = 14,
+    x_shift_frac: float = 0.0,
 ) -> None:
-    """Label near data point (x, y); arrow points toward the left/right y-spine."""
+    """Label near (x, y) with a short horizontal arrow pointing toward that y-axis.
+
+    Arrow is parallel to the x-axis and does **not** reach the spine — only the
+    direction (left for N, right for I) is indicated.
+    """
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
     x_span = max(x1 - x0, 1e-9)
     y_span = max(y1 - y0, 1e-9)
-    # Keep label slightly off the curve so the arrow is visible.
+    arrow_len = 0.045 * x_span
+    # Small vertical nudge so the label sits off the curve.
+    y_text = y + 0.055 * y_span
+    x_text = x + x_shift_frac * x_span
+
     if side == "left":
-        xy = (x0, y)  # tip on left spine at this y
-        xytext = (x + 0.08 * x_span, y + 0.04 * y_span)
+        # Tip ← text  (points toward left y-axis)
+        xy = (x_text - arrow_len, y_text)
+        xytext = (x_text, y_text)
         ha = "left"
     else:
-        xy = (x1, y)
-        xytext = (x - 0.08 * x_span, y + 0.04 * y_span)
+        # text → tip  (points toward right y-axis)
+        xy = (x_text + arrow_len, y_text)
+        xytext = (x_text, y_text)
         ha = "right"
     ax.annotate(
         text,
@@ -687,8 +751,10 @@ def _annotate_toward_axis(
         arrowprops=dict(
             arrowstyle="-|>",
             color=color,
-            lw=1.4,
-            mutation_scale=13,
+            lw=1.2,
+            mutation_scale=10,
+            shrinkA=0,
+            shrinkB=0,
         ),
         clip_on=False,
         annotation_clip=False,
@@ -762,10 +828,11 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
             zorder=6,
         )
 
-        # Near-curve labels; arrows aim at the matching y-axis (N left, I right).
+        # Near-curve labels; short horizontal arrows (N ← left, I → right).
         if len(t) > 4:
-            j_n = int(len(t) * 0.40)
-            j_i = int(len(t) * 0.75)
+            # N earlier + shifted left so the label clears the rising solid curve.
+            j_n = int(len(t) * 0.28)
+            j_i = int(len(t) * 0.78)
             n_y = float(n[j_n]) if np.isfinite(n[j_n]) else float(np.nanmax(n))
             i_y = float(i[j_i]) if np.isfinite(i[j_i]) else float(np.nanmax(i))
             _annotate_toward_axis(
@@ -776,6 +843,7 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
                 x=float(t[j_n]),
                 y=n_y,
                 fontsize=14,
+                x_shift_frac=-0.08,
             )
             _annotate_toward_axis(
                 ax2,
@@ -785,6 +853,7 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
                 x=float(t[j_i]),
                 y=i_y,
                 fontsize=14,
+                x_shift_frac=0.02,
             )
 
     axes[-1].set_xlabel("")  # shared label via fig.text
@@ -844,19 +913,28 @@ def _label_curve(
     *,
     frac: float = 0.65,
     dy_frac: float = 0.06,
+    dx_frac: float = 0.0,
     fontsize: float = 13,
     extra: str | None = None,
 ) -> None:
-    """Place sample name next to the curve (no legend)."""
+    """Place sample name next to the curve (no legend).
+
+    ``dx_frac`` / ``dy_frac`` are fractions of the current axis spans, applied
+    relative to the curve sample at ``frac`` along the series (negative dx
+    shifts the label left off the line).
+    """
     mask = np.isfinite(y)
     if not np.any(mask):
         return
     t_m, y_m = t[mask], y[mask]
     j = min(int(len(t_m) * frac), len(t_m) - 1)
-    y_span = ax.get_ylim()[1] - ax.get_ylim()[0]
+    x0, x1 = ax.get_xlim()
+    y0, y1 = ax.get_ylim()
+    x_span = max(x1 - x0, 1e-9)
+    y_span = max(y1 - y0, 1e-9)
     label = text if not extra else f"{text}\n{extra}"
     ax.text(
-        float(t_m[j]),
+        float(t_m[j]) + dx_frac * x_span,
         float(y_m[j]) + dy_frac * y_span,
         label,
         color=color,
@@ -868,12 +946,14 @@ def _label_curve(
     )
 
 
-def export_comparison_plot(series: dict[str, dict]) -> Path:
+def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
     """Merged direct comparison: N (top) and I (bottom), each ~3:1.
 
     Independent y-scales (both start at 0). Curve labels instead of legends.
-    N panel: early-stage diffusion-limited √t asymptote. I panel: 'no clustering'
-    note on the flat aiLNP intensity.
+    N panel: phase-I √t fit to Onpattro mean + planar Ward–Tordai guide.
+    I panel: 'no clustering' note on the flat aiLNP intensity.
+
+    Returns (svg_path, guide_meta) where guide_meta documents the N-panel guides.
     """
     OUT_PLOTS.mkdir(parents=True, exist_ok=True)
 
@@ -902,27 +982,62 @@ def export_comparison_plot(series: dict[str, dict]) -> Path:
     ax_n.set_ylabel(YLABEL_N, fontsize=16)
     ax_n.set_xlabel("")
 
-    t_dl, n_dl = diffusion_limited_curve(min(PHASE_I_END_MIN, t_max))
+    # Empirical phase-I √t fit to Onpattro mean N (this plot's blue series).
+    t_std = np.asarray(series["standard"]["t_min"], dtype=float)
+    n_std = np.asarray(series["standard"]["n_mean"], dtype=float)
+    a_fit, b_fit, r2_fit = fit_sqrt_asymptote(t_std, n_std, t_end=PHASE_I_END_MIN)
+    t_fit, n_fit = sqrt_asymptote_curve(
+        a_fit, b_fit, t_max=min(PHASE_I_END_MIN, t_max)
+    )
     ax_n.plot(
-        t_dl,
-        n_dl,
-        color="0.35",
+        t_fit,
+        n_fit,
+        color="0.25",
         linewidth=2.0,
         linestyle=":",
         zorder=3,
     )
-    # Label asymptote near its end.
-    if len(t_dl):
+    # First-principles planar Ward–Tordai (absolute DL scale from D, c0, A_cell).
+    t_wt, n_wt = ward_tordai_curve(t_max=min(PHASE_I_END_MIN, t_max))
+    ax_n.plot(
+        t_wt,
+        n_wt,
+        color="0.45",
+        linewidth=1.8,
+        linestyle="--",
+        zorder=3,
+    )
+    # Labels near each guide curve (early phase only).
+    if len(t_fit):
         ax_n.text(
-            float(t_dl[-1]) * 0.92,
-            float(n_dl[-1]) * 1.02,
-            "diffusion-limited",
-            color="0.3",
-            fontsize=12,
+            float(t_fit[-1]) * 0.88,
+            float(n_fit[-1]) * 1.03,
+            r"$\sqrt{t}$ fit (Onpattro mean)",
+            color="0.2",
+            fontsize=11,
             ha="right",
             va="bottom",
             style="italic",
         )
+    if len(t_wt):
+        # WT is much lower — place label above the curve mid-phase.
+        j_wt = int(len(t_wt) * 0.7)
+        ax_n.text(
+            float(t_wt[j_wt]),
+            float(n_wt[j_wt]) + 0.04 * n_hi,
+            "Ward–Tordai (planar DL)",
+            color="0.4",
+            fontsize=11,
+            ha="left",
+            va="bottom",
+            style="italic",
+        )
+    print(
+        f"[comparison] phase-I √t fit on Onpattro mean: "
+        f"a={a_fit:.4f}, b={b_fit:.4f}, R²={r2_fit:.4f}; "
+        f"Ward–Tordai N(30 min)={_A_CELL * 2.0 * _C0 * np.sqrt(_D_BULK * 30 * 60 / np.pi):.2f}",
+        flush=True,
+    )
 
     _label_curve(
         ax_n,
@@ -930,8 +1045,9 @@ def export_comparison_plot(series: dict[str, dict]) -> Path:
         np.asarray(series["standard"]["n_mean"], dtype=float),
         SLIDE_LABEL["standard"],
         DATASETS[0].color,
-        frac=0.45,
-        dy_frac=0.04,
+        frac=0.32,
+        dy_frac=0.05,
+        dx_frac=-0.10,
         fontsize=13,
     )
     _label_curve(
@@ -966,8 +1082,9 @@ def export_comparison_plot(series: dict[str, dict]) -> Path:
         np.asarray(series["standard"]["i_mean"], dtype=float),
         SLIDE_LABEL["standard"],
         DATASETS[0].color,
-        frac=0.55,
-        dy_frac=0.05,
+        frac=0.35,
+        dy_frac=0.10,
+        dx_frac=-0.14,
         fontsize=13,
     )
     _label_curve(
@@ -995,7 +1112,29 @@ def export_comparison_plot(series: dict[str, dict]) -> Path:
         if legacy.exists():
             legacy.unlink()
             print(f"removed {legacy}", flush=True)
-    return out
+
+    n_wt_30 = float(
+        _A_CELL * 2.0 * _C0 * np.sqrt(_D_BULK * 30.0 * 60.0 / np.pi)
+    )
+    guide_meta = {
+        "sqrt_fit": {
+            "law": "N ≈ a√t + b",
+            "a": a_fit,
+            "b": b_fit,
+            "r2": r2_fit,
+            "t_max_min": PHASE_I_END_MIN,
+            "source": "least-squares on Onpattro mean N(t), 0 < t ≤ 30 min",
+        },
+        "ward_tordai": {
+            "law": "N = A_cell · 2 · c0 · √(D t / π)",
+            "D_m2_s": float(_D_BULK),
+            "A_cell_m2": float(_A_CELL),
+            "c0_m-3": float(_C0),
+            "N_30min": n_wt_30,
+            "source": "planar Ward–Tordai; params match scripts/rd_binding_phases.py",
+        },
+    }
+    return out, guide_meta
 
 
 # ---------------------------------------------------------------------------
@@ -1070,6 +1209,7 @@ def main(argv: list[str] | None = None) -> None:
 
     movie_meta: dict = {}
     series: dict[str, dict] = {}
+    guide_meta: dict = {}
 
     merged_meta: dict = {}
 
@@ -1081,7 +1221,7 @@ def main(argv: list[str] | None = None) -> None:
             print(f"removed {png}", flush=True)
         series = compute_series()
         export_dual_axis_plot(series)
-        export_comparison_plot(series)
+        _, guide_meta = export_comparison_plot(series)
         if (OUT_ROOT / "manifest.json").exists():
             try:
                 prev = json.loads((OUT_ROOT / "manifest.json").read_text(encoding="utf-8"))
@@ -1113,6 +1253,7 @@ def main(argv: list[str] | None = None) -> None:
                             "n_cells", 0
                         )
                     }
+                guide_meta = prev.get("plots", {}).get("n_guides", {}) or {}
             except (json.JSONDecodeError, OSError):
                 pass
     else:
@@ -1124,10 +1265,22 @@ def main(argv: list[str] | None = None) -> None:
         merged_meta = export_merged_movie(movie_meta)
         series = compute_series()
         export_dual_axis_plot(series)
-        export_comparison_plot(series)
+        _, guide_meta = export_comparison_plot(series)
+
+    sqrt_note = ""
+    wt_note = ""
+    if guide_meta.get("sqrt_fit"):
+        sf = guide_meta["sqrt_fit"]
+        sqrt_note = (
+            f"√t fit to Onpattro mean (a={sf['a']:.3f}, b={sf['b']:.3f}, "
+            f"R²={sf['r2']:.3f}, t≤{sf['t_max_min']:.0f} min)"
+        )
+    if guide_meta.get("ward_tordai"):
+        wt = guide_meta["ward_tordai"]
+        wt_note = f"Ward–Tordai planar DL (N(30 min)≈{wt['N_30min']:.1f})"
 
     manifest = {
-        "schema_version": "1.1",
+        "schema_version": "1.2",
         "description": (
             "Clean PPT assets: separate + 2×2 merged fluo/Spotiflow movies "
             "(per-panel fluo display scale), dual-axis N/I by formulation, "
@@ -1165,13 +1318,7 @@ def main(argv: list[str] | None = None) -> None:
             "comparison_N_I": (
                 "assets/binding/ppt_clean/plots/comparison_N_I_mean_vs_t.svg"
             ),
-            "diffusion_limited": {
-                "law": "N ≈ a√t + b",
-                "a": SQRT_FIT_A,
-                "b": SQRT_FIT_B,
-                "t_max_min": PHASE_I_END_MIN,
-                "source": "presentation/data/binding-theory.ts SQRT_FIT (phase I)",
-            },
+            "n_guides": guide_meta,
         },
     }
     man_path = OUT_ROOT / "manifest.json"
@@ -1204,7 +1351,7 @@ def main(argv: list[str] | None = None) -> None:
         "| File | Content |\n"
         "|------|---------|\n"
         "| `dual_axis_N_I_by_formulation.svg` | Two dual-y panels (Onpattro / aiLNP), unified y from 0 |\n"
-        "| `comparison_N_I_mean_vs_t.svg` | Direct N and I overlays (3:1 panels), √t asymptote on N |\n"
+        "| `comparison_N_I_mean_vs_t.svg` | Direct N and I overlays (3:1 panels); √t fit + Ward–Tordai on N |\n"
         "| `{standard,aiLNP}_mean_N_I_vs_t.csv` | Numeric series |\n"
         "\n"
         "- No titles / legends / suptitles — sample names and curve labels in-panel\n"
@@ -1212,8 +1359,8 @@ def main(argv: list[str] | None = None) -> None:
         "- X label: **time (min)**\n"
         "- Dual-axis: shared N and I scales across formulations; arrows mark "
         r"$N_{\mathrm{LNP}}$ / $I_{\mathrm{LNP}}$ toward their axes" "\n"
-        "- Comparison N: early-stage **diffusion-limited** √t asymptote "
-        f"(a={SQRT_FIT_A:.3f}, b={SQRT_FIT_B:.3f}, t≤{PHASE_I_END_MIN:.0f} min)\n"
+        f"- Comparison N guides: **{sqrt_note or '√t fit (Onpattro mean)'}**; "
+        f"**{wt_note or 'Ward–Tordai planar DL'}**\n"
         "- Comparison I: aiLNP labelled **no clustering**\n"
         "\n"
         "### Definitions\n"
