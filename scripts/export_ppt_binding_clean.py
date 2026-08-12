@@ -121,10 +121,12 @@ _C0 = 2e14  # m⁻³ manuscript dose estimate
 FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 FONT_BOLD_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 
-# Axis label copy (no units, per user). Include N/I symbols so dual-axis
-# arrows to the spines read cleanly with the in-panel annotations.
-YLABEL_N = r"number of LNP cluster ($N_{\mathrm{LNP}}$)"
-YLABEL_I = r"mean intensity of LNP cluster ($I_{\mathrm{LNP}}$)"
+# Axis label copy (no units, per user). Dual-axis includes N/I symbols so
+# arrows to the spines match in-panel annotations; comparison omits them.
+YLABEL_N = "number of LNP cluster"
+YLABEL_I = "mean intensity of LNP cluster"
+YLABEL_N_DUAL = r"number of LNP cluster ($N_{\mathrm{LNP}}$)"
+YLABEL_I_DUAL = r"mean intensity of LNP cluster ($I_{\mathrm{LNP}}$)"
 XLABEL_T = "time (min)"
 
 # ---------------------------------------------------------------------------
@@ -974,8 +976,8 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
     _shared_axis_labels(
         fig,
         xlabel=XLABEL_T,
-        ylabel_left=YLABEL_N,
-        ylabel_right=YLABEL_I,
+        ylabel_left=YLABEL_N_DUAL,
+        ylabel_right=YLABEL_I_DUAL,
         fontsize=22,
     )
 
