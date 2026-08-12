@@ -951,7 +951,7 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
                 x=float(t[j_i]),
                 y=i_y,
                 fontsize=14,
-                x_shift_frac=-0.18,
+                x_shift_frac=-0.30,
                 y_shift_frac=-0.08,
             )
 
