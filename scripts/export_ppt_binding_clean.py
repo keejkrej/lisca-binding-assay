@@ -642,6 +642,81 @@ def _style_axis(ax, *, ticksize: int = 12) -> None:
     ax.tick_params(axis="both", labelsize=ticksize)
 
 
+def _shared_axis_labels(
+    fig,
+    *,
+    xlabel: str | None = None,
+    ylabel_left: str | None = None,
+    ylabel_right: str | None = None,
+    fontsize: float = 22,
+) -> None:
+    """Figure-level axis titles only — panels stay independent (no sharex/sharey)."""
+    if ylabel_left:
+        fig.text(
+            0.04,
+            0.5,
+            ylabel_left,
+            va="center",
+            ha="center",
+            rotation="vertical",
+            fontsize=fontsize,
+            fontweight="bold",
+            color="0.15",
+        )
+    if ylabel_right:
+        fig.text(
+            0.97,
+            0.5,
+            ylabel_right,
+            va="center",
+            ha="center",
+            rotation=270,
+            fontsize=fontsize,
+            fontweight="bold",
+            color="0.15",
+        )
+    if xlabel:
+        fig.text(
+            0.5,
+            0.02,
+            xlabel,
+            va="center",
+            ha="center",
+            fontsize=fontsize,
+            fontweight="bold",
+            color="0.15",
+        )
+
+
+def _apply_panel_ticks(ax, *, labelbottom: bool = True, ticksize: int = 14) -> None:
+    """Independent panel ticks — dark, always on (not coupled via sharex)."""
+    tick_c = "0.15"
+    ax.tick_params(
+        axis="x",
+        which="major",
+        bottom=True,
+        top=False,
+        labelbottom=labelbottom,
+        length=5,
+        width=0.9,
+        colors=tick_c,
+        labelcolor=tick_c,
+        labelsize=ticksize,
+    )
+    ax.tick_params(
+        axis="y",
+        which="major",
+        left=True,
+        right=False,
+        labelleft=True,
+        length=5,
+        width=0.9,
+        colors=tick_c,
+        labelcolor=tick_c,
+        labelsize=ticksize,
+    )
+
+
 def fit_sqrt_asymptote(
     t_min: np.ndarray,
     n_mean: np.ndarray,
@@ -765,14 +840,15 @@ def _annotate_toward_axis(
 
 
 def export_dual_axis_plot(series: dict[str, dict]) -> Path:
-    """Two dual-y subplots (Onpattro / aiLNP), unified N and I scales from 0.
+    """Two dual-y subplots (Onpattro / aiLNP), same N and I y-limits from 0.
 
-    Shared large axis labels (left N, right I, bottom time). Sample name top-left;
-    N_LNP / I_LNP annotations with arrows toward the corresponding y-axis.
+    Panels are independent (no sharex/sharey). Only the axis *titles* are shared
+    via figure-level labels (left N, right I, bottom time). Each panel keeps its
+    own tick marks and numeric tick labels.
     """
     OUT_PLOTS.mkdir(parents=True, exist_ok=True)
 
-    # Unified limits across formulations (ymin = 0).
+    # Same numeric limits across formulations (visual comparison), not sharey.
     n_hi = max(robust_ymax(series[ds.key]["n_mean"]) for ds in DATASETS)
     i_hi = max(robust_ymax(series[ds.key]["i_mean"]) for ds in DATASETS)
     t_max = max(
@@ -781,16 +857,15 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
         if len(series[ds.key]["t_min"])
     )
 
-    # ~3:1 per panel → stacked figure ~ 14 × 9 including shared labels.
     fig, axes = plt.subplots(
         2,
         1,
         figsize=(14.0, 9.0),
-        sharex=True,
-        gridspec_kw={"hspace": 0.18},
+        gridspec_kw={"hspace": 0.28},
     )
     fig.patch.set_facecolor("white")
-    twins: list = []
+    x_right = t_max if t_max > 0 else 120.0
+    tick_c = "0.15"
 
     for ax, ds in zip(axes, DATASETS):
         s = series[ds.key]
@@ -801,18 +876,40 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
 
         _style_axis(ax, ticksize=14)
         ax.plot(t, n, color=color, linewidth=2.6, linestyle="-", solid_capstyle="round")
+        ax.set_xlim(0, x_right)
+        ax.set_ylim(0.0, n_hi)
+        ax.set_box_aspect(1 / 3)
+
+        # Twin after host limits + aspect so spines/ticks stay aligned.
         ax2 = ax.twinx()
-        twins.append(ax2)
         _style_axis(ax2, ticksize=14)
         ax2.plot(t, i, color=color, linewidth=2.3, linestyle="--", dash_capstyle="round")
-
-        ax.set_xlim(0, t_max if t_max > 0 else 120)
-        ax.set_ylim(0.0, n_hi)
         ax2.set_ylim(0.0, i_hi)
-        ax.set_box_aspect(1 / 3)
-        ax.tick_params(axis="y", labelcolor=color)
-        ax2.tick_params(axis="y", labelcolor=color)
-        # Hide per-panel axis titles — figure-level shared labels only.
+
+        # Full independent ticks on every panel (including x numbers on both).
+        _apply_panel_ticks(ax, labelbottom=True, ticksize=14)
+        ax2.tick_params(
+            axis="y",
+            which="major",
+            left=False,
+            right=True,
+            labelright=True,
+            length=5,
+            width=0.9,
+            colors=tick_c,
+            labelcolor=tick_c,
+            labelsize=14,
+        )
+        for spine in ("left", "bottom", "top", "right"):
+            ax.spines[spine].set_visible(True)
+            ax.spines[spine].set_color("0.3")
+        ax2.spines["right"].set_visible(True)
+        ax2.spines["right"].set_color("0.3")
+        ax2.spines["left"].set_visible(False)
+        ax2.spines["top"].set_visible(False)
+        ax2.spines["bottom"].set_visible(False)
+
+        # No per-panel axis titles — shared titles only (see _shared_axis_labels).
         ax.set_ylabel("")
         ax2.set_ylabel("")
         ax.set_xlabel("")
@@ -832,7 +929,6 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
 
         # Near-curve labels; short horizontal arrows (N ← left, I → right).
         if len(t) > 4:
-            # N earlier + shifted left so the label clears the rising solid curve.
             j_n = int(len(t) * 0.28)
             j_i = int(len(t) * 0.78)
             n_y = float(n[j_n]) if np.isfinite(n[j_n]) else float(np.nanmax(n))
@@ -855,46 +951,33 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
                 x=float(t[j_i]),
                 y=i_y,
                 fontsize=14,
-                # Left and down from the high late-I region so the label clears the top spine.
-                x_shift_frac=-0.08,
+                x_shift_frac=-0.18,
                 y_shift_frac=-0.08,
             )
 
-    axes[-1].set_xlabel("")  # shared label via fig.text
-    # Large shared labels, centered on the figure edges.
-    fig.text(
-        0.04,
-        0.5,
-        YLABEL_N,
-        va="center",
-        ha="center",
-        rotation="vertical",
+    # Twins created in-loop → fig.axes order: host0, twin0, host1, twin1.
+    fig.subplots_adjust(left=0.10, right=0.90, top=0.97, bottom=0.10, hspace=0.28)
+    hosts = list(axes)
+    twins = [a for a in fig.axes if a not in hosts]
+    for host, twin in zip(hosts, twins):
+        twin.set_position(host.get_position())
+        twin.yaxis.set_tick_params(
+            which="major", labelright=True, right=True, labelsize=14, labelcolor=tick_c
+        )
+        host.yaxis.set_tick_params(
+            which="major", labelleft=True, left=True, labelsize=14, labelcolor=tick_c
+        )
+        host.xaxis.set_tick_params(
+            which="major", labelbottom=True, bottom=True, labelsize=14, labelcolor=tick_c
+        )
+
+    _shared_axis_labels(
+        fig,
+        xlabel=XLABEL_T,
+        ylabel_left=YLABEL_N,
+        ylabel_right=YLABEL_I,
         fontsize=22,
-        fontweight="bold",
-        color="0.15",
     )
-    fig.text(
-        0.97,
-        0.5,
-        YLABEL_I,
-        va="center",
-        ha="center",
-        rotation=270,
-        fontsize=22,
-        fontweight="bold",
-        color="0.15",
-    )
-    fig.text(
-        0.5,
-        0.02,
-        XLABEL_T,
-        va="center",
-        ha="center",
-        fontsize=22,
-        fontweight="bold",
-        color="0.15",
-    )
-    fig.subplots_adjust(left=0.10, right=0.90, top=0.97, bottom=0.10, hspace=0.18)
 
     out = OUT_PLOTS / "dual_axis_N_I_by_formulation.svg"
     fig.savefig(out, format="svg", bbox_inches="tight", facecolor="white")
@@ -953,7 +1036,9 @@ def _label_curve(
 def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
     """Merged direct comparison: N (top) and I (bottom), each ~3:1.
 
-    Independent y-scales (both start at 0). Curve labels instead of legends.
+    Independent panels (no sharex/sharey). Shared figure-level x title only;
+    each panel has its own y title (N vs I). Full tick labels on both panels.
+
     N panel: phase-I √t fit to Onpattro mean + planar Ward–Tordai guide.
     I panel: 'no clustering' note on the flat aiLNP intensity.
 
@@ -966,26 +1051,27 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
         for ds in DATASETS
         if len(series[ds.key]["t_min"])
     )
+    x_right = t_max if t_max > 0 else 120.0
 
-    # Two stacked panels, each forced to width:height = 3:1 via box aspect.
-    fig, axes = plt.subplots(2, 1, figsize=(12.0, 9.5))
+    # Independent panels — no sharex/sharey.
+    fig, axes = plt.subplots(2, 1, figsize=(12.0, 9.5), gridspec_kw={"hspace": 0.32})
     fig.patch.set_facecolor("white")
 
     # --- N panel ---
     ax_n = axes[0]
-    _style_axis(ax_n, ticksize=13)
+    _style_axis(ax_n, ticksize=14)
     for ds in DATASETS:
         s = series[ds.key]
         t = np.asarray(s["t_min"], dtype=float)
         y = np.asarray(s["n_mean"], dtype=float)
         ax_n.plot(t, y, color=ds.color, linewidth=2.4, linestyle="-")
     n_hi = max(robust_ymax(series[ds.key]["n_mean"]) for ds in DATASETS)
-    ax_n.set_xlim(0, t_max if t_max > 0 else 120)
+    ax_n.set_xlim(0, x_right)
     ax_n.set_ylim(0.0, n_hi)
-    ax_n.set_box_aspect(1 / 3)  # height/width = 1/3 → 3:1 wide
-    # Match dual-axis shared label size (fontsize 22, bold).
+    ax_n.set_box_aspect(1 / 3)
     ax_n.set_ylabel(YLABEL_N, fontsize=22, fontweight="bold")
     ax_n.set_xlabel("")
+    _apply_panel_ticks(ax_n, labelbottom=True, ticksize=14)
 
     # Empirical phase-I √t fit to Onpattro mean N (this plot's blue series).
     t_std = np.asarray(series["standard"]["t_min"], dtype=float)
@@ -1028,7 +1114,7 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
         # Low WT curve — shift label right along early phase so it sits clear of √t fit.
         j_wt = min(int(len(t_wt) * 0.88), len(t_wt) - 1)
         ax_n.text(
-            float(t_wt[j_wt]) + 0.04 * (t_max if t_max > 0 else 120),
+            float(t_wt[j_wt]) + 0.04 * x_right,
             float(n_wt[j_wt]) + 0.05 * n_hi,
             "Ward–Tordai (planar DL)",
             color="0.4",
@@ -1068,18 +1154,19 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
 
     # --- I panel ---
     ax_i = axes[1]
-    _style_axis(ax_i, ticksize=13)
+    _style_axis(ax_i, ticksize=14)
     for ds in DATASETS:
         s = series[ds.key]
         t = np.asarray(s["t_min"], dtype=float)
         y = np.asarray(s["i_mean"], dtype=float)
         ax_i.plot(t, y, color=ds.color, linewidth=2.4, linestyle="-")
     i_hi = max(robust_ymax(series[ds.key]["i_mean"]) for ds in DATASETS)
-    ax_i.set_xlim(0, t_max if t_max > 0 else 120)
+    ax_i.set_xlim(0, x_right)
     ax_i.set_ylim(0.0, i_hi)
     ax_i.set_box_aspect(1 / 3)
     ax_i.set_ylabel(YLABEL_I, fontsize=22, fontweight="bold")
-    ax_i.set_xlabel(XLABEL_T, fontsize=22, fontweight="bold")
+    ax_i.set_xlabel("")  # shared figure-level x title
+    _apply_panel_ticks(ax_i, labelbottom=True, ticksize=14)
 
     _label_curve(
         ax_i,
@@ -1104,7 +1191,9 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
         extra="no clustering",
     )
 
-    fig.subplots_adjust(left=0.10, right=0.98, top=0.97, bottom=0.08, hspace=0.28)
+    fig.subplots_adjust(left=0.12, right=0.98, top=0.97, bottom=0.10, hspace=0.32)
+    # Shared x title only (y titles differ per panel: N vs I).
+    _shared_axis_labels(fig, xlabel=XLABEL_T, fontsize=22)
 
     out = OUT_PLOTS / "comparison_N_I_mean_vs_t.svg"
     fig.savefig(out, format="svg", bbox_inches="tight", facecolor="white")
