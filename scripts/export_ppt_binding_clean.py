@@ -121,9 +121,10 @@ _C0 = 2e14  # m⁻³ manuscript dose estimate
 FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 FONT_BOLD_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
 
-# Axis label copy (no units, per user).
-YLABEL_N = "number of LNP cluster"
-YLABEL_I = "mean intensity of LNP cluster"
+# Axis label copy (no units, per user). Include N/I symbols so dual-axis
+# arrows to the spines read cleanly with the in-panel annotations.
+YLABEL_N = r"number of LNP cluster ($N_{\mathrm{LNP}}$)"
+YLABEL_I = r"mean intensity of LNP cluster ($I_{\mathrm{LNP}}$)"
 XLABEL_T = "time (min)"
 
 # ---------------------------------------------------------------------------
@@ -715,19 +716,20 @@ def _annotate_toward_axis(
     y: float,
     fontsize: float = 14,
     x_shift_frac: float = 0.0,
+    y_shift_frac: float = 0.055,
 ) -> None:
     """Label near (x, y) with a short horizontal arrow pointing toward that y-axis.
 
     Arrow is parallel to the x-axis and does **not** reach the spine — only the
-    direction (left for N, right for I) is indicated.
+    direction (left for N, right for I) is indicated. ``x_shift_frac`` /
+    ``y_shift_frac`` are fractions of the axis spans relative to the curve point.
     """
     x0, x1 = ax.get_xlim()
     y0, y1 = ax.get_ylim()
     x_span = max(x1 - x0, 1e-9)
     y_span = max(y1 - y0, 1e-9)
     arrow_len = 0.045 * x_span
-    # Small vertical nudge so the label sits off the curve.
-    y_text = y + 0.055 * y_span
+    y_text = y + y_shift_frac * y_span
     x_text = x + x_shift_frac * x_span
 
     if side == "left":
@@ -853,7 +855,9 @@ def export_dual_axis_plot(series: dict[str, dict]) -> Path:
                 x=float(t[j_i]),
                 y=i_y,
                 fontsize=14,
-                x_shift_frac=0.02,
+                # Left and down from the high late-I region so the label clears the top spine.
+                x_shift_frac=-0.08,
+                y_shift_frac=-0.08,
             )
 
     axes[-1].set_xlabel("")  # shared label via fig.text
@@ -979,7 +983,8 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
     ax_n.set_xlim(0, t_max if t_max > 0 else 120)
     ax_n.set_ylim(0.0, n_hi)
     ax_n.set_box_aspect(1 / 3)  # height/width = 1/3 → 3:1 wide
-    ax_n.set_ylabel(YLABEL_N, fontsize=16)
+    # Match dual-axis shared label size (fontsize 22, bold).
+    ax_n.set_ylabel(YLABEL_N, fontsize=22, fontweight="bold")
     ax_n.set_xlabel("")
 
     # Empirical phase-I √t fit to Onpattro mean N (this plot's blue series).
@@ -1020,11 +1025,11 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
             style="italic",
         )
     if len(t_wt):
-        # WT is much lower — place label above the curve mid-phase.
-        j_wt = int(len(t_wt) * 0.7)
+        # Low WT curve — shift label right along early phase so it sits clear of √t fit.
+        j_wt = min(int(len(t_wt) * 0.88), len(t_wt) - 1)
         ax_n.text(
-            float(t_wt[j_wt]),
-            float(n_wt[j_wt]) + 0.04 * n_hi,
+            float(t_wt[j_wt]) + 0.04 * (t_max if t_max > 0 else 120),
+            float(n_wt[j_wt]) + 0.05 * n_hi,
             "Ward–Tordai (planar DL)",
             color="0.4",
             fontsize=11,
@@ -1073,8 +1078,8 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
     ax_i.set_xlim(0, t_max if t_max > 0 else 120)
     ax_i.set_ylim(0.0, i_hi)
     ax_i.set_box_aspect(1 / 3)
-    ax_i.set_ylabel(YLABEL_I, fontsize=16)
-    ax_i.set_xlabel(XLABEL_T, fontsize=16)
+    ax_i.set_ylabel(YLABEL_I, fontsize=22, fontweight="bold")
+    ax_i.set_xlabel(XLABEL_T, fontsize=22, fontweight="bold")
 
     _label_curve(
         ax_i,
@@ -1355,7 +1360,8 @@ def main(argv: list[str] | None = None) -> None:
         "| `{standard,aiLNP}_mean_N_I_vs_t.csv` | Numeric series |\n"
         "\n"
         "- No titles / legends / suptitles — sample names and curve labels in-panel\n"
-        "- Y labels: **number of LNP cluster** / **mean intensity of LNP cluster** (no units)\n"
+        "- Y labels: **number of LNP cluster ($N_{LNP}$)** / "
+        "**mean intensity of LNP cluster ($I_{LNP}$)** (no units)\n"
         "- X label: **time (min)**\n"
         "- Dual-axis: shared N and I scales across formulations; arrows mark "
         r"$N_{\mathrm{LNP}}$ / $I_{\mathrm{LNP}}$ toward their axes" "\n"
