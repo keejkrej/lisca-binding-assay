@@ -13,10 +13,7 @@ from binding.core.frames import (
     parse_frame,
 )
 from binding.core.paths import (
-    analysis_output_path,
-    binary_output_path,
     filtered_spots_output_path,
-    labeled_output_path,
     spot_counts_output_path,
     spotiflow_roi_output_path,
 )
@@ -29,7 +26,11 @@ from binding.core.roi import (
     roi_dir,
     roi_stack_path,
 )
-from binding.core.cellpose_contours import cellpose_contours_from_bf, contours_from_labels, segment_bf_labels
+from binding.core.cellpose_contours import (
+    cellpose_contours_from_bf,
+    contours_from_labels,
+    segment_bf_labels,
+)
 from binding.core.segmentation import compute_cell_mask, segment_frame, solidify_cell_mask
 from binding.core.spotiflow import load_spotiflow_model, predict_spots, write_spot_csv
 from binding.core.types import FRAME_RE, Frame
@@ -37,10 +38,8 @@ from binding.core.types import FRAME_RE, Frame
 __all__ = [
     "FRAME_RE",
     "Frame",
-    "analysis_output_path",
     "available_summary",
     "available_times",
-    "binary_output_path",
     "build_time_map",
     "cellpose_contours_from_bf",
     "compute_cell_mask",
@@ -49,7 +48,6 @@ __all__ = [
     "filtered_spots_output_path",
     "find_frames",
     "gaussian_filter_2d",
-    "labeled_output_path",
     "list_rois",
     "load_roi_index",
     "load_roi_stack",

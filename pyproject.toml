@@ -1,7 +1,7 @@
 [project]
 name = "binding"
 version = "0.1.0"
-description = "Add your description here"
+description = "2D LNP membrane-binding analysis on LISCA ROI crops (Spotiflow + RD theory)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
