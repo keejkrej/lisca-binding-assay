@@ -115,15 +115,12 @@ binding show DATA -p 0 -c 1 -t 0
 | `scripts/rd_binding_phases.py` | First-principles RD binding simulation (fig.5 phases) |
 | `scripts/fit_rd_binding.py` | Extended RD fit (best-effort) |
 | `scripts/rd_results/` | Simulation / fit outputs |
-| `scripts/export_ppt_binding_clean.py` | PPT-clean Onpattro vs aiLNP movies + plots → paper presentation |
+| `scripts/export_ppt_binding_clean.py` | PPT-clean Onpattro vs aiLNP movies + plots → `../ailnp-paper/ppt` |
 | `scripts/export_binding_assets.py` | Deck binding stills/movies + `kinetics-real.ts` |
 
-Presentation exporters write into the sibling paper tree by default
-(`../lisca-paper/presentation`), override with:
-
 ```bash
-export LISCA_PAPER_PRESENTATION=/path/to/lisca-paper/presentation
 .venv/bin/python scripts/export_ppt_binding_clean.py --plots-only
+# override output dir: AILNP_PPT=/path/to/ppt
 ```
 
 ### RD binding theory

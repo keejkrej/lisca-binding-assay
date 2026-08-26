@@ -26,7 +26,8 @@ uv run binding --help
 Primary: `spotiflow` → `filter-spots` → `spot-counts` → `plot-lnp`.
 
 Paper/PPT scripts stay in `scripts/` (including `export_ppt_binding_clean.py`,
-`rd_binding_phases.py`). Do not copy RD helpers into `lisca-paper`.
+`rd_binding_phases.py`). PPT-clean Onpattro vs aiLNP assets write to
+`../ailnp-paper/ppt/`. Do not copy RD helpers into `lisca-paper`.
 
 ## Out of scope
 

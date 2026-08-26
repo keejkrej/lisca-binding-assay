@@ -16,8 +16,8 @@ Usage (from lisca-binding-assay):
   .venv/bin/python scripts/export_ppt_binding_clean.py
   .venv/bin/python scripts/export_ppt_binding_clean.py --plots-only
 
-Assets write into the paper presentation tree by default
-(``../lisca-paper/presentation``) or ``$LISCA_PAPER_PRESENTATION``.
+Assets write into ``../ailnp-paper/ppt`` by default (movies/, plots/, stills/).
+Override with ``$AILNP_PPT`` or legacy ``$LISCA_PAPER_PRESENTATION``.
 """
 from __future__ import annotations
 
@@ -47,11 +47,14 @@ from binding.services.filter_spots import read_spot_csv
 # ---------------------------------------------------------------------------
 
 _BA_ROOT = Path(__file__).resolve().parents[1]
-_DEFAULT_PRES = _BA_ROOT.parent / "lisca-paper" / "presentation"
-PRES_ROOT = Path(
-    os.environ.get("LISCA_PAPER_PRESENTATION", str(_DEFAULT_PRES))
+_DEFAULT_PPT = _BA_ROOT.parent / "ailnp-paper" / "ppt"
+PPT_ROOT = Path(
+    os.environ.get(
+        "AILNP_PPT",
+        os.environ.get("LISCA_PAPER_PRESENTATION", str(_DEFAULT_PPT)),
+    )
 ).expanduser().resolve()
-OUT_ROOT = PRES_ROOT / "public/assets/binding/ppt_clean"
+OUT_ROOT = PPT_ROOT
 OUT_MOVIES = OUT_ROOT / "movies"
 OUT_PLOTS = OUT_ROOT / "plots"
 OUT_STILLS = OUT_ROOT / "stills"
@@ -499,7 +502,7 @@ def export_merged_movie(movie_meta: dict[str, dict]) -> dict:
         )
 
     return {
-        "path": f"assets/binding/ppt_clean/movies/{out_name}",
+        "path": f"movies/{out_name}",
         "layout": "2x2 rows=Onpattro/aiLNP cols=fluo/Spotiflow",
         "n_frames": n_out,
         "fps": MOVIE_FPS,
@@ -579,8 +582,8 @@ def export_movie(ds: Dataset) -> dict:
                 "phase": phase,
                 "t_min": ti * DT_S / 60.0,
                 "n_spots": len(rows),
-                "fluo": str(fluo_still.relative_to(PRES_ROOT / "public")),
-                "spotiflow": str(spot_still.relative_to(PRES_ROOT / "public")),
+                "fluo": str(fluo_still.relative_to(OUT_ROOT)),
+                "spotiflow": str(spot_still.relative_to(OUT_ROOT)),
             }
         )
         print(f"[{ds.key}] stills {phase} → {fluo_still.name}, {spot_still.name}", flush=True)
@@ -596,8 +599,8 @@ def export_movie(ds: Dataset) -> dict:
 
     return {
         "movies": {
-            "fluo": f"assets/binding/ppt_clean/movies/{fluo_name}",
-            "spotiflow": f"assets/binding/ppt_clean/movies/{spot_name}",
+            "fluo": f"movies/{fluo_name}",
+            "spotiflow": f"movies/{spot_name}",
         },
         "roi": roi,
         "n_movie_frames": len(indices),
@@ -1408,12 +1411,8 @@ def main(argv: list[str] | None = None) -> None:
                 "comparison: ymin=0, independent ymax per metric"
             ),
             "format": "svg only",
-            "dual_axis_by_formulation": (
-                "assets/binding/ppt_clean/plots/dual_axis_N_I_by_formulation.svg"
-            ),
-            "comparison_N_I": (
-                "assets/binding/ppt_clean/plots/comparison_N_I_mean_vs_t.svg"
-            ),
+            "dual_axis_by_formulation": "plots/dual_axis_N_I_by_formulation.svg",
+            "comparison_N_I": "plots/comparison_N_I_mean_vs_t.svg",
             "n_guides": guide_meta,
         },
     }
@@ -1479,7 +1478,7 @@ def main(argv: list[str] | None = None) -> None:
         ".venv/bin/python scripts/export_ppt_binding_clean.py --plots-only\n"
         "# movies only (incl. 2×2 merge):\n"
         ".venv/bin/python scripts/export_ppt_binding_clean.py --movies-only\n"
-        "# optional: LISCA_PAPER_PRESENTATION=/path/to/presentation\n"
+        "# optional: AILNP_PPT=/path/to/ppt   # default ../ailnp-paper/ppt\n"
         "```\n",
         encoding="utf-8",
     )
