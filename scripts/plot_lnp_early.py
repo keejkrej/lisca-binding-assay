@@ -1,10 +1,16 @@
-"""Regenerate fig5 as a five-row figure.
+"""Regenerate fig5 as a five-row figure from experimental traces.
+
+This is an analysis / layout script. The √t / Ward–Tordai physics and the
+reaction–diffusion solver live in keejkrej/lnpbinding-paper
+(`theory-binding.md`, `theory/sqrt-t-ward-tordai.md`, `code/rd-binding/`).
+A copy of this file exists there as a Phase I diagnostic; Fig. 5 layout
+stays here.
 
 Row A: three stages (early/middle/late) of the fluorescence image of the ROI.
 Row B: spotiflow detections + Cellpose contours on white.
 Row C: kinetic phase cartoons from excalidraw-cli (fig5_c_{i,ii,iii}.png), or matplotlib fallback.
-Row D: quantitative kinetic validation from theory and 4 s tracking.
-Row E: dual-axis time course with phase boundaries and model overlays.
+Row D: empirical Phase I N vs √t overlay, clustering signature, and 4 s merge counts.
+Row E: dual-axis experimental N(t), I(t) with phase boundaries and the same empirical √t overlay.
 
 Writes SVG to the paper figs dir.
 """
@@ -395,7 +401,11 @@ def render_phase_cartoon(axis, phase: str, *, title: str | None = None) -> None:
 def fit_sqrt_phase_i(
     times_min: list[float], median_counts: np.ndarray
 ) -> tuple[float, float, float]:
-    """Linear fit N = a*sqrt(t) + b for 0 < t <= phase I boundary."""
+    """Empirical linear fit N = a*sqrt(t) + b for 0 < t <= phase I boundary.
+
+    Overlay on experimental median N(t) for Fig. 5. Not the Ward–Tordai /
+    RD solver — those live in keejkrej/lnpbinding-paper (`code/rd-binding/`).
+    """
     t = np.asarray(times_min, dtype=float)
     y = np.asarray(median_counts, dtype=float)
     mask = (t > 0) & (t <= PHASE_BOUNDARIES_MIN[0])
@@ -434,7 +444,7 @@ def style_kinetic_axis(axis) -> None:
 
 
 def render_panel_c_sqrt(axis, plot_times: list[float], median_counts: np.ndarray) -> None:
-    """Phase I: median cumulative count vs sqrt(t) with linear fit."""
+    """Phase I: experimental median count vs sqrt(t) with empirical linear fit."""
     t = np.asarray(plot_times, dtype=float)
     sqrt_t = np.sqrt(t)
     axis.scatter(sqrt_t, median_counts, s=18, color=COUNT_COLOR, alpha=0.35, edgecolors="none")
@@ -705,7 +715,8 @@ def render_early(
     for axis, sub_label in zip(axis_c_axes, ("i", "ii", "iii")):
         add_panel_label(axis, sub_label, x=0.04)
 
-    # ---- Row D: kinetic analysis (theory + 4 s tracking) ----
+    # ---- Row D: empirical kinetic overlays (experimental traces + 4 s tracking) ----
+    # Phase I √t fit is least-squares on median N(t), not the RD model.
     reference_times = grouped[rois[0]][0]
     plot_times = to_plot_time(reference_times, time_unit)
     count_matrix = np.array([grouped[roi_index][1] for roi_index in rois], dtype=float)
