@@ -1,8 +1,13 @@
 # binding (`lisca-binding-assay`)
 
 CLI tools and analysis scripts for **2D LNP membrane-binding** on LISCA ROI crops:
-Spotiflow detection → filter → per-cell counts → figures, plus reaction–diffusion
-theory and presentation asset exporters.
+Spotiflow detection → filter → per-cell counts → figures, plus presentation
+asset exporters.
+
+This repo is **analysis only** (movies → \(N(t)\), \(I(t)\), tracks, filters,
+Fig. 5 pipeline). Theory + RD simulations →
+[`keejkrej/lnpbinding-paper`](https://github.com/keejkrej/lnpbinding-paper)
+(`theory-binding.md`, `code/rd-binding/`).
 
 > **3D volumetric particle / membrane workflows** (watershed, `analyze-membrane`,
 > multi-z Spotiflow seeds, …) were removed from `main`. They remain on branch
@@ -111,26 +116,20 @@ binding show DATA -p 0 -c 1 -t 0
 |------|------|
 | `scripts/run_fig5_4s_pipeline.sh` | Full fig5 4 s reanalysis pipeline |
 | `scripts/track_spots.py` | Spot tracking / merges |
-| `scripts/plot_lnp_early.py` | Early-phase LNP figure helpers |
-| `scripts/rd_binding_phases.py` | First-principles RD binding simulation (fig.5 phases) |
-| `scripts/fit_rd_binding.py` | Extended RD fit (best-effort) |
-| `scripts/rd_results/` | Simulation / fit outputs |
+| `scripts/plot_lnp_early.py` | Fig. 5 layout from experimental traces (not the RD solver) |
 | `scripts/export_ppt_binding_clean.py` | PPT-clean Onpattro vs aiLNP movies + plots → `../ailnp-paper/ppt` |
 | `scripts/export_binding_assets.py` | Deck binding stills/movies + `kinetics-real.ts` |
+| `scripts/rebuild_roi_stacks.py` | Rebuild ROI crops from full-field stacks |
+| `scripts/render_figb_movies.py` / `render_merge_movies.py` | Binding / merge movies |
 
 ```bash
 .venv/bin/python scripts/export_ppt_binding_clean.py --plots-only
 # override output dir: AILNP_PPT=/path/to/ppt
 ```
 
-### RD binding theory
-
-```bash
-.venv/bin/python scripts/rd_binding_phases.py
-.venv/bin/python scripts/fit_rd_binding.py
-```
-
-See `scripts/rd_results/README.md`.
+Theory + RD simulations (√t / Ward–Tordai, unit-cell RD solver, fits) live in
+[`keejkrej/lnpbinding-paper`](https://github.com/keejkrej/lnpbinding-paper)
+(`theory-binding.md`, `code/rd-binding/`). Do not re-add them here.
 
 ## Spotiflow models
 

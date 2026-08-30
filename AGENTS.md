@@ -25,10 +25,14 @@ uv run binding --help
 
 Primary: `spotiflow` → `filter-spots` → `spot-counts` → `plot-lnp`.
 
-Paper/PPT scripts stay in `scripts/` (including `export_ppt_binding_clean.py`,
-`rd_binding_phases.py`). PPT-clean Onpattro vs aiLNP assets write to
-`../ailnp-paper/ppt/`. Do not copy RD helpers into `lisca-paper`.
+Paper/PPT scripts stay in `scripts/` (including `export_ppt_binding_clean.py`).
+PPT-clean Onpattro vs aiLNP assets write to `../ailnp-paper/ppt/`. Do not copy
+analysis helpers into `lisca-paper`.
+
+Theory + RD simulations → `keejkrej/lnpbinding-paper` (`theory-binding.md`,
+`code/rd-binding/`). This repo is analysis only.
 
 ## Out of scope
 
-Studio UI, transfection/killing analysis, review-paper prose, 3D on `main`.
+Studio UI, transfection/killing analysis, review-paper prose, 3D on `main`,
+theory / RD simulations (those live in `lnpbinding-paper`).

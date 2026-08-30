@@ -111,7 +111,9 @@ SLIDE_LABEL = {
 # Phase-I window for empirical √t fit (min).
 PHASE_I_END_MIN = 30.0
 
-# First-principles planar Ward–Tordai (same material params as rd_binding_phases.py).
+# Planar Ward–Tordai guide overlay on experimental traces (same material
+# params as the unit-cell RD model). Physics + solver live in
+# keejkrej/lnpbinding-paper (`theory-binding.md`, `code/rd-binding/`).
 # N_WT(t) = A_cell * 2 * c0 * sqrt(D t / π)
 _KB = 1.380649e-23
 _T_K = 310.15
@@ -772,10 +774,11 @@ def ward_tordai_curve(
     t_max: float = PHASE_I_END_MIN,
     n: int = 80,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Planar Ward–Tordai diffusion-limited adsorption (first principles).
+    """Planar Ward–Tordai guide curve for the experimental N panel.
 
     N_WT(t) = A_cell · 2 · c0 · √(D t / π)
     with Stokes–Einstein D (100 nm LNP, 37 °C), A_cell = (30 µm)², c0 from dose.
+    Not the RD solver — that lives in keejkrej/lnpbinding-paper (`code/rd-binding/`).
     """
     t_min = np.linspace(0.0, min(t_max, PHASE_I_END_MIN), n)
     t_s = t_min * 60.0
@@ -1230,7 +1233,7 @@ def export_comparison_plot(series: dict[str, dict]) -> tuple[Path, dict]:
             "A_cell_m2": float(_A_CELL),
             "c0_m-3": float(_C0),
             "N_30min": n_wt_30,
-            "source": "planar Ward–Tordai; params match scripts/rd_binding_phases.py",
+            "source": "planar Ward–Tordai; params match keejkrej/lnpbinding-paper code/rd-binding/",
         },
     }
     return out, guide_meta
