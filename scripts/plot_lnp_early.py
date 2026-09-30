@@ -106,7 +106,7 @@ def auto_select_time_early(counts_by_roi: dict[int, tuple[list[float], list[int]
 
     The original auto_select_time picked ~70% of max spot_count (dense).
     For the paper we want to show an early, sparse frame so the reader can
-    see individual LNP binding events. We pick the first time index where
+    see individual LNP binding events. We pick the first Frame where
     spot_count reaches a small threshold (~10% of max) so there are clearly
     visible but sparse spots. Falls back to the first nonzero count, or 0.
     """
@@ -124,7 +124,7 @@ def auto_select_time_early(counts_by_roi: dict[int, tuple[list[float], list[int]
 
 
 def select_frame_fraction_time(n_frames: int, fraction: float) -> int:
-    """Pick a time index at a given fraction of the ROI's total frame count.
+    """Pick a Frame at a given fraction of the ROI's total frame count.
 
     Used for the "middle" and "late" time points so the three sub-panels are
     spread across the full recording rather than clustered near where

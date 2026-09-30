@@ -6,13 +6,13 @@ from typing import Annotated, Literal
 import typer
 
 from binding.app import app
-from binding.services.timeseries import run_timeseries
+from binding.services.traces import run_traces
 
 ProjectionOption = Literal["mean", "max", "sum"]
 
 
 @app.command()
-def timeseries(
+def traces(
     input_dir: Annotated[
         Path,
         typer.Argument(
@@ -71,7 +71,7 @@ def timeseries(
     ] = Path("."),
 ) -> None:
     try:
-        result = run_timeseries(
+        result = run_traces(
             input_dir,
             position=position,
             channel=channel,

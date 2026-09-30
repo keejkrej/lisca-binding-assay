@@ -40,7 +40,7 @@ def rebuild_rois(
 
     times = available_times(data_dir, position, channel=0)
     if not times:
-        raise ValueError(f"No timepoints under {data_dir}/Pos{position}")
+        raise ValueError(f"No frames under {data_dir}/Pos{position}")
 
     roi_dir = data_dir / "roi" / f"Pos{position}"
     roi_dir.mkdir(parents=True, exist_ok=True)
@@ -94,7 +94,7 @@ def rebuild_rois(
     out_index = roi_dir / "index.json"
     with out_index.open("w", encoding="utf-8") as fh:
         json.dump(index, fh, indent=2)
-    print(f"Updated {out_index} ({len(times)} timepoints)")
+    print(f"Updated {out_index} ({len(times)} frames)")
 
 
 def main() -> None:

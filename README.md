@@ -24,10 +24,11 @@ The `binding` entry point is available in the project virtual environment
 
 ## Input layout
 
-Most commands expect data converted from ND2 (or similar) into this folder structure:
+Most commands expect a LiSCA Workspace whose Image source is a templated image folder
+(converted from ND2 or similar), with ROI crops in `roi/`:
 
 ```text
-dataset/
+workspace/
   Pos0/
     img_channel000_position000_time000000000_z000.tif
     ...
@@ -73,23 +74,24 @@ binding plot-lnp "$DATA" "$DATA/results/spot_counts_position000_channel001.csv" 
   -c 1 --roi 2 --time 72 --time-unit min
 ```
 
-**Time axis:** `spot-counts` stores `time_real` in seconds. `plot-lnp` displays
-minutes by default. For subsampled ND2 where every 10th frame was kept from a
-4 s acquisition, use `--time-interval 40`.
+**Time axis:** `spot-counts` stores the Frame index in `time` and the
+Timepoint in `time_real` (seconds). `plot-lnp` displays
+minutes by default. For subsampled ND2 where every 10th Frame was kept from
+a 4 s acquisition, use `--time-interval 40` (the Interval in seconds).
 
-### 2. ROI mean-intensity time course
+### 2. Square-region intensity Traces
 
-Fixed square ROIs over time (not spot counting):
+Mean intensity of fixed square regions across Frames (not LiSCA ROIs, not spot counting):
 
 ```bash
-binding timeseries DATA -p 0 -c 1 \
+binding traces DATA -p 0 -c 1 \
   --sizes 8,16,32,64,128 \
   --center-y 128 --center-x 128 \
   --time-map time_map.csv \
-  -o timeseries/
+  -o traces/
 
-binding show-timeseries timeseries/timeseries_position000_channel001.csv \
-  --use-time-real -o timeseries/timeseries_position000_channel001.png
+binding show-traces traces/traces_position000_channel001.csv \
+  --use-time-real -o traces/traces_position000_channel001.png
 ```
 
 ### 3. Inspect a full-field stack
@@ -106,8 +108,8 @@ binding show DATA -p 0 -c 1 -t 0
 | `filter-spots` | Filter Spotiflow CSVs by intensity / size / prob |
 | `spot-counts` | Per-cell spot counts over time |
 | `plot-lnp` | LNP three-panel figure |
-| `timeseries` | ROI mean intensity over time |
-| `show-timeseries` | Plot intensity time course |
+| `traces` | Square-region mean intensity Traces over Frames |
+| `show-traces` | Plot intensity Traces |
 | `show` | View a raw stack in napari |
 
 ## Scripts
