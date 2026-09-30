@@ -59,7 +59,7 @@ def plot_lnp(
     ] = None,
     time: Annotated[
         int | None,
-        typer.Option("--time", "-t", help="Time index for panels d and e."),
+        typer.Option("--time", "-t", help="Frame for panels d and e."),
     ] = None,
     time_unit: Annotated[
         str,

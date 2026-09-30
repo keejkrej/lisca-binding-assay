@@ -414,7 +414,7 @@ def _encode_png_sequence(frame_dir: Path, out_mp4: Path, fps: float = MOVIE_FPS)
 def export_panel_movies(roi: int, times_s: list[float]) -> dict:
     """Write roi##_raw.mp4 + roi##_spotiflow.mp4 (filtered time axis, dual-seek locked).
 
-    Frame i maps to filtered time index i; stack index = i * STACK_STRIDE.
+    Movie frame i maps to filtered Frame i; stack index = i * STACK_STRIDE.
     Raw uses one global (vmin, vmax) across the full movie (p1–p99.5).
     Spotiflow: black canvas, cyan Cellpose contour, yellow intensity-scaled circles.
     """

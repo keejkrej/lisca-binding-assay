@@ -30,7 +30,7 @@ def spotiflow(
     ] = 0,
     time: Annotated[
         int,
-        typer.Option("--time", "-t", help="Time index to process."),
+        typer.Option("--time", "-t", help="Frame to process."),
     ] = 0,
     output: Annotated[
         Path,
@@ -62,7 +62,7 @@ def spotiflow(
     ] = False,
     all_times: Annotated[
         bool,
-        typer.Option("--all-times", help="Process every available time index."),
+        typer.Option("--all-times", help="Process every available Frame."),
     ] = False,
     use_roi_stacks: Annotated[
         bool,

@@ -14,7 +14,7 @@ Projection = Literal["mean", "max", "sum"]
 
 
 @dataclass(frozen=True)
-class TimeseriesResult:
+class TracesResult:
     output_path: Path
     row_count: int
     time_count: int
@@ -81,13 +81,13 @@ def sample_roi_mean(image: np.ndarray, y0: int, y1: int, x0: int, x1: int) -> fl
     return float(region.mean())
 
 
-def timeseries_output_path(output: Path, position: int, channel: int) -> Path:
+def traces_output_path(output: Path, position: int, channel: int) -> Path:
     if output.suffix.lower() == ".csv":
         return output
-    return output / f"timeseries_position{position:03d}_channel{channel:03d}.csv"
+    return output / f"traces_position{position:03d}_channel{channel:03d}.csv"
 
 
-def write_timeseries_csv(
+def write_traces_csv(
     output_path: Path,
     rows: list[dict[str, object]],
     include_time_real: bool,
@@ -111,7 +111,7 @@ def write_timeseries_csv(
         writer.writerows(rows)
 
 
-def run_timeseries(
+def run_traces(
     input_dir: Path,
     *,
     position: int,
@@ -123,7 +123,7 @@ def run_timeseries(
     projection: Projection,
     time_map: Path | None,
     output: Path,
-) -> TimeseriesResult:
+) -> TracesResult:
     roi_sizes = parse_sizes(sizes)
     times = _available_times(input_dir, position, channel)
     if not times:
@@ -184,10 +184,10 @@ def run_timeseries(
                 row["time_real"] = time_real_by_index[time_index]
             rows.append(row)
 
-    output_path = timeseries_output_path(output, position, channel)
-    write_timeseries_csv(output_path, rows, include_time_real=time_real_by_index is not None)
+    output_path = traces_output_path(output, position, channel)
+    write_traces_csv(output_path, rows, include_time_real=time_real_by_index is not None)
 
-    return TimeseriesResult(
+    return TracesResult(
         output_path=output_path,
         row_count=len(rows),
         time_count=len(times),

@@ -21,7 +21,7 @@ def show(
     ],
     position: Annotated[int, typer.Option("--position", "-p", help="Position index to show.")] = 0,
     channel: Annotated[int, typer.Option("--channel", "-c", help="Channel index to show.")] = 0,
-    time: Annotated[int, typer.Option("--time", "-t", help="Time index to show.")] = 0,
+    time: Annotated[int, typer.Option("--time", "-t", help="Frame to show.")] = 0,
     metadata: Annotated[
         Path | None,
         typer.Option(
