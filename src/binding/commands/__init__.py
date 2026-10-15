@@ -1,5 +1,6 @@
 from binding.commands import (  # noqa: F401
     filter_spots,
+    picasso,
     plot_lnp,
     show,
     show_traces,
@@ -10,6 +11,7 @@ from binding.commands import (  # noqa: F401
 
 __all__ = [
     "filter_spots",
+    "picasso",
     "plot_lnp",
     "show",
     "show_traces",

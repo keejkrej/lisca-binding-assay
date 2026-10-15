@@ -293,10 +293,16 @@ def generate_b_movie(
 
 
 def resolve_spot_csv(filtered_dir: Path, roi: int, time_index: int) -> Path:
-    path = filtered_dir / f"roi{roi:02d}_time{time_index:09d}_filtered.csv"
-    if not path.exists():
-        raise ValueError(f"Filtered spot CSV not found: {path}")
-    return path
+    candidates = [
+        filtered_dir / f"roi{roi}_time{time_index:04d}_filtered.csv",
+        filtered_dir / f"roi{roi:02d}_time{time_index:09d}_filtered.csv",
+        filtered_dir / f"roi{roi:02d}_time{time_index:04d}_filtered.csv",
+        filtered_dir / f"roi{roi}_time{time_index:04d}.csv",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    raise ValueError(f"Filtered spot CSV not found: {candidates[0]}")
 
 
 def add_panel_label(axis, label: str) -> None:

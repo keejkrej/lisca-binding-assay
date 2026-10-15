@@ -1,7 +1,7 @@
 [project]
 name = "binding"
 version = "0.1.0"
-description = "2D LNP membrane-binding analysis on LISCA ROI crops (Spotiflow)"
+description = "2D LNP membrane-binding analysis on LISCA ROI crops (Picasso & Spotiflow)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,6 +9,8 @@ dependencies = [
     "matplotlib>=3.10",
     "napari>=0.7.0",
     "numpy>=1.26",
+    "pandas>=2.0",
+    "picassosr>=0.11.3",
     "pyqt6>=6.11.0",
     "scikit-image>=0.26",
     "spotiflow>=0.0.0",
