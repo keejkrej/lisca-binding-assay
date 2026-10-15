@@ -8,16 +8,68 @@ use serde::{Deserialize, Serialize};
 use tiff::decoder::{Decoder, DecodingResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoiBbox {
+    pub w: usize,
+    pub h: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoiEntry {
     pub roi: u32,
     #[serde(rename = "fileName")]
     pub file_name: String,
-    pub shape: [usize; 5],
+    #[serde(default)]
+    pub shape: Option<[usize; 5]>,
+    #[serde(default)]
+    pub bbox: Option<RoiBbox>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoiIndex {
+    #[serde(default)]
+    pub position: Option<u32>,
+    #[serde(rename = "axisOrder", default)]
+    pub axis_order: Option<String>,
+    #[serde(rename = "timeCount", default)]
+    pub time_count: Option<usize>,
+    #[serde(rename = "channelCount", default)]
+    pub channel_count: Option<usize>,
+    #[serde(rename = "zCount", default)]
+    pub z_count: Option<usize>,
+    #[serde(rename = "timeIndices", default)]
+    pub time_indices: Option<Vec<u32>>,
     pub rois: Vec<RoiEntry>,
+}
+
+impl RoiIndex {
+    pub fn resolved_shape(&self, entry: &RoiEntry) -> Result<[usize; 5], String> {
+        if let Some(shape) = entry.shape {
+            return Ok(shape);
+        }
+        let t = self
+            .time_count
+            .ok_or_else(|| "index.json missing timeCount and entry.shape".to_string())?;
+        let c = self
+            .channel_count
+            .ok_or_else(|| "index.json missing channelCount and entry.shape".to_string())?;
+        let z = self.z_count.unwrap_or(1);
+        let bbox = entry
+            .bbox
+            .as_ref()
+            .ok_or_else(|| format!("ROI {} missing bbox and shape in index.json", entry.roi))?;
+        Ok([t, c, z, bbox.h, bbox.w])
+    }
+
+    pub fn resolved_time_indices(&self, time_count: usize) -> Result<Vec<u32>, String> {
+        match &self.time_indices {
+            None => Ok((0..time_count as u32).collect()),
+            Some(indices) if indices.len() == time_count => Ok(indices.clone()),
+            Some(indices) => Err(format!(
+                "index.json timeIndices length {} does not match timeCount {time_count}",
+                indices.len()
+            )),
+        }
+    }
 }
 
 pub fn roi_dir(input_dir: &Path, position: u32) -> PathBuf {
@@ -27,12 +79,24 @@ pub fn roi_dir(input_dir: &Path, position: u32) -> PathBuf {
 pub fn load_roi_index(input_dir: &Path, position: u32) -> Result<RoiIndex, String> {
     let index_path = roi_dir(input_dir, position).join("index.json");
     if !index_path.is_file() {
-        return Err(format!("ROI index not found at {}", index_path.display()));
+        return Err(format!(
+            "No ROI directory found for position {position}: {}",
+            index_path.display()
+        ));
     }
     let contents = std::fs::read_to_string(&index_path)
         .map_err(|e| format!("Failed to read {}: {e}", index_path.display()))?;
-    serde_json::from_str(&contents)
-        .map_err(|e| format!("Invalid ROI index JSON {}: {e}", index_path.display()))
+    let index: RoiIndex = serde_json::from_str(&contents)
+        .map_err(|e| format!("Invalid ROI index JSON {}: {e}", index_path.display()))?;
+    if let Some(axis) = &index.axis_order {
+        if !axis.eq_ignore_ascii_case("TCZYX") {
+            return Err(format!(
+                "{}: unsupported axisOrder '{axis}' (expected TCZYX)",
+                index_path.display()
+            ));
+        }
+    }
+    Ok(index)
 }
 
 pub fn list_rois(input_dir: &Path, position: u32) -> Result<Vec<u32>, String> {
@@ -116,7 +180,7 @@ pub fn load_roi_stack(
         .find(|e| e.roi == roi)
         .ok_or_else(|| format!("ROI {roi} not found for position={position}"))?;
 
-    let [t_count, c_count, z_count, h_expected, w_expected] = entry.shape;
+    let [t_count, c_count, z_count, h_expected, w_expected] = index.resolved_shape(entry)?;
     let ch = channel as usize;
     if ch >= c_count {
         return Err(format!(
@@ -133,7 +197,7 @@ pub fn load_roi_stack(
             pages.len(),
             h,
             w,
-            entry.shape
+            [t_count, c_count, z_count, h_expected, w_expected]
         ));
     }
 
