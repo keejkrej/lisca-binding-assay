@@ -5,8 +5,10 @@ use std::process::Command;
 
 use csv::ReaderBuilder;
 use lisca_binding::{
-    run_filter_spots, run_picasso_roi, run_picasso_stack, run_plot_lnp, run_show_traces,
-    run_spot_counts, run_traces, FilterCriteria, PicassoParams, Projection, PICASSO_SPOT_COLUMNS,
+    run_filter_spots, run_picasso_roi, run_picasso_stack, run_plot_lnp, run_position_binding,
+    run_show_traces, run_spot_counts, run_traces, write_binding_summary, FilterCriteria,
+    PicassoParams, Projection, SampleAnalysis, SampleMapping, BINDING_CSV_HEADERS,
+    BINDING_SUMMARY_CSV_HEADERS, PARTICLE_CSV_HEADERS, PICASSO_SPOT_COLUMNS,
 };
 use tempfile::TempDir;
 use tiff::encoder::{colortype::Gray16, TiffEncoder};
@@ -535,4 +537,58 @@ fn python_and_rust_binding_pipeline_match_on_synthetic_workspace() {
     assert_eq!(rs_plot_res.cell_count, 2);
     assert!(py_fig_png.is_file() && py_fig_png.metadata().unwrap().len() > 0);
     assert!(rs_fig_png.is_file() && rs_fig_png.metadata().unwrap().len() > 0);
+
+    // 7. Workspace lnp-binding assay parity (particles.csv, binding.csv, binding_summary.csv, .xlsx)
+    let py_ws = tmp.path().join("py_ws");
+    let rs_ws = tmp.path().join("rs_ws");
+    build_synthetic_workspace(&py_ws);
+    build_synthetic_workspace(&rs_ws);
+
+    let status = Command::new("/home/jack/workspace/lisca-binding-assay/.venv/bin/python")
+        .current_dir(&repo)
+        .env("PYTHONPATH", repo.join("src"))
+        .args([
+            "-c",
+            &format!(
+                "from pathlib import Path; from binding.services.binding_assay import SampleChannels, run_position_binding; ws = Path({:?}); s = SampleChannels(name='LNP_A', positions=(0,), signal=(1,), segmentation=0); run_position_binding(ws, s, 0, 5.0)",
+                py_ws.to_str().unwrap()
+            ),
+        ])
+        .status()
+        .expect("run python binding_assay");
+    assert!(status.success(), "python binding_assay failed");
+
+    let mapping = SampleMapping(vec![SampleAnalysis {
+        name: "LNP_A".to_string(),
+        positions: vec![0],
+        signal: vec![1],
+        segmentation: 0,
+    }]);
+    run_position_binding(&rs_ws, &mapping, 0, 5.0).expect("rust run_position_binding");
+    write_binding_summary(&rs_ws, &mapping).expect("rust write_binding_summary");
+
+    compare_csv_files(
+        &py_ws.join("analysis/Pos0/particles.csv"),
+        &rs_ws.join("analysis/Pos0/particles.csv"),
+        PARTICLE_CSV_HEADERS,
+        1e-2,
+        1e-2,
+    );
+    compare_csv_files(
+        &py_ws.join("analysis/Pos0/binding.csv"),
+        &rs_ws.join("analysis/Pos0/binding.csv"),
+        BINDING_CSV_HEADERS,
+        1e-2,
+        1e-2,
+    );
+    compare_csv_files(
+        &py_ws.join("analysis/Pos0/binding_summary.csv"),
+        &rs_ws.join("analysis/Pos0/binding_summary.csv"),
+        BINDING_SUMMARY_CSV_HEADERS,
+        1e-2,
+        1e-2,
+    );
+    for wb in ["particles.xlsx", "binding.xlsx", "binding_summary.xlsx"] {
+        assert!(rs_ws.join("results/LNP_A").join(wb).is_file());
+    }
 }
