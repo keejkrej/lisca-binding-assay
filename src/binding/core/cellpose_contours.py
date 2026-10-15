@@ -49,5 +49,15 @@ def contours_from_labels(labels: np.ndarray) -> list[np.ndarray]:
 
 
 def cellpose_contours_from_bf(frame: np.ndarray) -> list[np.ndarray]:
-    """Segment ROI brightfield with cpsam and return separate contours per cell."""
-    return contours_from_labels(segment_bf_labels(frame))
+    """Segment ROI brightfield with cpsam (or Otsu fallback) and return separate contours per cell."""
+    import os
+    if os.environ.get("BINDING_CONTOUR_BACKEND", "").lower() == "otsu":
+        from binding.core.segmentation import compute_cell_mask
+        mask = compute_cell_mask(frame)
+        return contours_from_labels(mask.astype(np.int32))
+    try:
+        return contours_from_labels(segment_bf_labels(frame))
+    except Exception:
+        from binding.core.segmentation import compute_cell_mask
+        mask = compute_cell_mask(frame)
+        return contours_from_labels(mask.astype(np.int32))

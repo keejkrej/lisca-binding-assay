@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
-from spotiflow.model import Spotiflow
-from spotiflow.utils.fitting import signal_to_background
+if TYPE_CHECKING:
+    from spotiflow.model import Spotiflow
 
 
-def load_spotiflow_model(model_name: str) -> Spotiflow:
+def load_spotiflow_model(model_name: str) -> "Spotiflow":
+    from spotiflow.model import Spotiflow
+
     return Spotiflow.from_pretrained(model_name)
 
 
 def predict_spots(
-    model: Spotiflow,
+    model: "Spotiflow",
     image: np.ndarray,
     *,
     estimate_params: bool = False,
@@ -22,6 +25,8 @@ def predict_spots(
 ) -> pd.DataFrame:
     if image.ndim != 2:
         raise ValueError(f"Expected a 2D image, got shape {image.shape}")
+
+    from spotiflow.utils.fitting import signal_to_background
 
     spots, details = model.predict(
         image,
