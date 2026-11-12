@@ -58,7 +58,8 @@ fn cmd_picasso(args: &[String]) -> Result<(), String> {
     let position = flag_u32_any(args, &["--position", "-p"])?.unwrap_or(0);
     let channel = flag_u32_any(args, &["--channel", "-c"])?.unwrap_or(0);
     let time = flag_u32_any(args, &["--time", "-t"])?.unwrap_or(0);
-    let output = flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| PathBuf::from("picasso"));
+    let output =
+        flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| PathBuf::from("picasso"));
     let min_gradient = flag_f64_any(args, &["--min-gradient", "-g"])?.unwrap_or(500.0);
     let box_size = flag_usize_any(args, &["--box-size", "-b"])?.unwrap_or(7);
     let fit_method = flag_value_any(args, &["--fit-method"])
@@ -90,15 +91,7 @@ fn cmd_picasso(args: &[String]) -> Result<(), String> {
     let roi_mode = use_roi_stacks || all_rois || roi.is_some();
     if roi_mode {
         let res = run_picasso_roi(
-            &input_dir,
-            position,
-            channel,
-            time,
-            &output,
-            &params,
-            roi,
-            all_rois,
-            all_times,
+            &input_dir, position, channel, time, &output, &params, roi, all_rois, all_times,
         )?;
         println!(
             "Saved Picasso output to {} for rois={:?}, times={}, total_spots={}, fit_method={}, model={}",
@@ -126,7 +119,8 @@ fn cmd_filter_spots(args: &[String]) -> Result<(), String> {
     let input_dir = first_positional(args)
         .map(PathBuf::from)
         .ok_or_else(|| "missing INPUT_DIR argument".to_string())?;
-    let output = flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| PathBuf::from("filtered"));
+    let output =
+        flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| PathBuf::from("filtered"));
     let min_intensity = Some(flag_f64_any(args, &["--min-intensity"])?.unwrap_or(2500.0));
     let max_intensity = flag_f64_any(args, &["--max-intensity"])?;
     let min_fwhm = Some(flag_f64_any(args, &["--min-fwhm"])?.unwrap_or(2.0));
@@ -250,8 +244,8 @@ fn cmd_plot_lnp(args: &[String]) -> Result<(), String> {
     let counts_csv = PathBuf::from(pos_args[1]);
     let filtered_dir = flag_path_any(args, &["--filtered-dir"])
         .ok_or_else(|| "plot-lnp requires --filtered-dir <DIR>".to_string())?;
-    let output =
-        flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| PathBuf::from("fig5_panels.png"));
+    let output = flag_path_any(args, &["--output", "-o"])
+        .unwrap_or_else(|| PathBuf::from("fig5_panels.png"));
     let position = flag_u32_any(args, &["--position", "-p"])?.unwrap_or(0);
     let channel = flag_u32_any(args, &["--channel", "-c"])?.unwrap_or(1);
     let roi = flag_u32_any(args, &["--roi"])?;
@@ -284,7 +278,8 @@ fn cmd_pipeline(args: &[String]) -> Result<(), String> {
     let input_dir = first_positional(args)
         .map(PathBuf::from)
         .ok_or_else(|| "missing INPUT_DIR argument".to_string())?;
-    let output_dir = flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| input_dir.join("analysis"));
+    let output_dir =
+        flag_path_any(args, &["--output", "-o"]).unwrap_or_else(|| input_dir.join("analysis"));
     let position = flag_u32_any(args, &["--position", "-p"])?.unwrap_or(0);
     let channel = flag_u32_any(args, &["--channel", "-c"])?.unwrap_or(1);
     let min_gradient = flag_f64_any(args, &["--min-gradient", "-g"])?.unwrap_or(500.0);

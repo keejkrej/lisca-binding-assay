@@ -87,7 +87,9 @@ pub fn filter_spot_frame(
     Ok(filtered)
 }
 
-pub fn read_spot_csv(path: &Path) -> Result<(Vec<String>, Vec<BTreeMap<String, String>>), String> {
+pub type SpotCsvRows = (Vec<String>, Vec<BTreeMap<String, String>>);
+
+pub fn read_spot_csv(path: &Path) -> Result<SpotCsvRows, String> {
     let mut reader = ReaderBuilder::new()
         .has_headers(true)
         .from_path(path)

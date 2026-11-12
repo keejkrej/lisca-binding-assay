@@ -3,7 +3,10 @@ use std::path::{Path, PathBuf};
 
 use csv::ReaderBuilder;
 use marray::np::s;
-use mplot::prelude::{AxesStyle, Color, Colormap, Figure, GridPos, ImageStyle, LegendLoc, LegendStyle, LineStyle, SaveOptions, ScatterStyle, Size};
+use mplot::prelude::{
+    AxesStyle, Color, Colormap, Figure, GridPos, ImageStyle, LegendLoc, LegendStyle, LineStyle,
+    SaveOptions, ScatterStyle, Size,
+};
 
 use crate::filter_spots::read_spot_csv;
 use crate::paths::traces_plot_output_path;
@@ -75,8 +78,7 @@ pub fn run_show_traces(
             if s.is_empty() {
                 return Err("Traces CSV is missing time_real values".to_string());
             }
-            s.parse()
-                .map_err(|e| format!("Invalid time_real: {e}"))?
+            s.parse().map_err(|e| format!("Invalid time_real: {e}"))?
         } else {
             rec.get(time_idx.unwrap())
                 .ok_or_else(|| "Missing time".to_string())?
@@ -147,9 +149,9 @@ pub fn run_show_traces(
     })
 }
 
-pub fn read_counts_csv(
-    path: &Path,
-) -> Result<(Vec<u32>, BTreeMap<u32, (Vec<f64>, Vec<usize>)>), String> {
+pub type GroupedSpotCounts = BTreeMap<u32, (Vec<f64>, Vec<usize>)>;
+
+pub fn read_counts_csv(path: &Path) -> Result<(Vec<u32>, GroupedSpotCounts), String> {
     let mut reader = ReaderBuilder::new()
         .has_headers(true)
         .from_path(path)
@@ -212,10 +214,7 @@ pub fn auto_select_roi(grouped: &BTreeMap<u32, (Vec<f64>, Vec<usize>)>) -> u32 {
         .unwrap_or(0)
 }
 
-pub fn auto_select_time(
-    grouped: &BTreeMap<u32, (Vec<f64>, Vec<usize>)>,
-    roi: u32,
-) -> u32 {
+pub fn auto_select_time(grouped: &BTreeMap<u32, (Vec<f64>, Vec<usize>)>, roi: u32) -> u32 {
     let Some((_, counts)) = grouped.get(&roi) else {
         return 0;
     };
@@ -252,6 +251,7 @@ pub fn resolve_spot_csv(filtered_dir: &Path, roi: u32, time_index: u32) -> Resul
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_plot_lnp(
     input_dir: &Path,
     counts_csv: &Path,
@@ -293,7 +293,11 @@ pub fn run_plot_lnp(
     }
 
     let time_scale = if time_unit == "min" { 1.0 / 60.0 } else { 1.0 };
-    let x_label = if time_unit == "min" { "t (min)" } else { "t (s)" };
+    let x_label = if time_unit == "min" {
+        "t (min)"
+    } else {
+        "t (s)"
+    };
 
     let mut mean_times: Vec<f64> = Vec::new();
     let mut mean_counts: Vec<f64> = Vec::new();
@@ -330,7 +334,9 @@ pub fn run_plot_lnp(
                 flat_img,
                 w,
                 h,
-                ImageStyle::new().colormap(Colormap::Grayscale).colorbar(false),
+                ImageStyle::new()
+                    .colormap(Colormap::Grayscale)
+                    .colorbar(false),
             );
             p.axes(AxesStyle::new().title("A: Fluorescence"));
         })

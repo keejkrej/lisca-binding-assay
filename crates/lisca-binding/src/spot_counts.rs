@@ -106,7 +106,9 @@ pub fn count_new_spots(
     (new_count, updated)
 }
 
-pub fn collect_spot_files(input_dir: &Path) -> Result<BTreeMap<u32, BTreeMap<u32, PathBuf>>, String> {
+pub fn collect_spot_files(
+    input_dir: &Path,
+) -> Result<BTreeMap<u32, BTreeMap<u32, PathBuf>>, String> {
     let entries = std::fs::read_dir(input_dir)
         .map_err(|e| format!("Failed to read {}: {e}", input_dir.display()))?;
     let mut paths: Vec<PathBuf> = entries
@@ -129,7 +131,10 @@ pub fn collect_spot_files(input_dir: &Path) -> Result<BTreeMap<u32, BTreeMap<u32
         }
     }
     if grouped.is_empty() {
-        return Err(format!("No spot CSV files found in {}", input_dir.display()));
+        return Err(format!(
+            "No spot CSV files found in {}",
+            input_dir.display()
+        ));
     }
     Ok(grouped)
 }
@@ -142,6 +147,7 @@ fn fmt_py_float(v: f64) -> String {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_spot_counts(
     input_dir: &Path,
     output: &Path,

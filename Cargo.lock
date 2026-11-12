@@ -1054,6 +1054,7 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "csv",
+ "font-kit",
  "marray 1.0.0 (git+https://github.com/keejkrej/marray-rs?rev=af67ac2d833f55e069f286022d0a0de0b9547bfb)",
  "mplot 1.0.0 (git+https://github.com/keejkrej/mplot-rs?rev=8a596cdcb0f45eb1d48252b5c36c5d68ebfc2842)",
  "picasso",
@@ -1063,7 +1064,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tiff 0.10.3",
- "yeslogic-fontconfig-sys",
 ]
 
 [[package]]

@@ -19,13 +19,13 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use csv::{ReaderBuilder, WriterBuilder};
-use marray::np::{Array2, s};
+use marray::np::{s, Array2};
 use serde::{Deserialize, Serialize};
 
 use crate::export::write_xlsx_only;
-use crate::picasso_stage::{PicassoParams, detect_spots_picasso};
+use crate::picasso_stage::{detect_spots_picasso, PicassoParams};
 use crate::roi::{load_roi_index, load_roi_stack, roi_dir};
-use crate::sample::{SampleMapping, sample_pack_dirnames};
+use crate::sample::{sample_pack_dirnames, SampleMapping};
 
 pub const DEFAULT_MIN_GRADIENT: f64 = 250.0;
 pub const DEFAULT_BOX_SIZE: usize = 7;
@@ -280,7 +280,11 @@ fn quantile(values: &[f64], q: f64) -> f64 {
 fn round_dec(v: f64, decimals: i32) -> f64 {
     let factor = 10f64.powi(decimals);
     let r = (v * factor).round() / factor;
-    if r == 0.0 { 0.0 } else { r }
+    if r == 0.0 {
+        0.0
+    } else {
+        r
+    }
 }
 
 pub fn detect_particles_frame(
@@ -405,8 +409,7 @@ pub fn run_position_binding(
     for (roi, stack) in &stacks {
         let time_count = stack.shape()[0];
         let time_indices = index.resolved_time_indices(time_count)?;
-        for stack_t in 0..time_count {
-            let source_t = time_indices[stack_t];
+        for (stack_t, &source_t) in time_indices.iter().enumerate().take(time_count) {
             let minutes = f64::from(source_t) * interval_minutes;
             let frame = stack.slice(s![stack_t, .., ..]).to_owned();
             let spots = detect_particles_frame(&frame, min_gradient)?;

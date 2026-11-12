@@ -1,6 +1,11 @@
 use std::path::{Path, PathBuf};
 
-pub fn spotiflow_stack_output_path(output: &Path, position: u32, channel: u32, time: u32) -> PathBuf {
+pub fn spotiflow_stack_output_path(
+    output: &Path,
+    position: u32,
+    channel: u32,
+    time: u32,
+) -> PathBuf {
     output.join(format!(
         "spotiflow_position{position:03}_channel{channel:03}_time{time:09}.csv"
     ))

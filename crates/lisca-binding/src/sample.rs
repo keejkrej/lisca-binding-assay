@@ -27,6 +27,10 @@ impl SampleMapping {
         self.0.is_empty()
     }
 
+    pub fn get(&self, index: usize) -> Option<&SampleAnalysis> {
+        self.0.get(index)
+    }
+
     /// Distinct Positions across all Samples, in assay order.
     pub fn positions(&self) -> Vec<u32> {
         let mut seen = HashSet::new();
