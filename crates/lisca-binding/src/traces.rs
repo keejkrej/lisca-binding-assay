@@ -148,6 +148,7 @@ fn fmt_py_float(v: f64) -> String {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_traces(
     input_dir: &Path,
     position: u32,

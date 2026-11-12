@@ -62,8 +62,9 @@ fn build_synthetic_workspace(ws: &Path) {
     let roi_pos0 = ws.join("roi").join("Pos0");
     fs::create_dir_all(&roi_pos0).expect("mkdir roi/Pos0");
 
+    type SpotTuple = (f64, f64, f64, f64, f64);
     // Time-series spot schedules for ROI 0 and ROI 1 (4 frames each, 2 channels: ch0=BF, ch1=Fluo)
-    let roi0_spots: Vec<Vec<(f64, f64, f64, f64, f64)>> = vec![
+    let roi0_spots: Vec<Vec<SpotTuple>> = vec![
         vec![(16.25, 18.40, 1200.0, 1.35, 1.45)],
         vec![
             (16.30, 18.35, 1250.0, 1.35, 1.45),
@@ -81,7 +82,7 @@ fn build_synthetic_workspace(ws: &Path) {
         ],
     ];
 
-    let roi1_spots: Vec<Vec<(f64, f64, f64, f64, f64)>> = vec![
+    let roi1_spots: Vec<Vec<SpotTuple>> = vec![
         vec![(20.15, 20.80, 1350.0, 1.40, 1.40)],
         vec![(20.18, 20.78, 1360.0, 1.40, 1.40)],
         vec![
@@ -122,7 +123,7 @@ fn build_synthetic_workspace(ws: &Path) {
     for (t, spots) in roi0_spots.iter().enumerate() {
         let ch0_name = format!("img_channel000_position000_time{t:09}_z000.tif");
         let ch1_name = format!("img_channel001_position000_time{t:09}_z000.tif");
-        write_tiff_pages(&pos0_dir.join(ch0_name), &[bf_page.clone()]);
+        write_tiff_pages(&pos0_dir.join(ch0_name), std::slice::from_ref(&bf_page));
         write_tiff_pages(
             &pos0_dir.join(ch1_name),
             &[render_gaussian_frame(spots, 100.0)],
@@ -282,18 +283,8 @@ fn python_and_rust_binding_pipeline_match_on_synthetic_workspace() {
         gain: 1.0,
         gaussian_sigma: None,
     };
-    let rs_roi_res = run_picasso_roi(
-        &ws,
-        0,
-        1,
-        0,
-        &rs_picasso_dir,
-        &lq_params,
-        None,
-        true,
-        true,
-    )
-    .expect("rust run_picasso_roi");
+    let rs_roi_res = run_picasso_roi(&ws, 0, 1, 0, &rs_picasso_dir, &lq_params, None, true, true)
+        .expect("rust run_picasso_roi");
     assert_eq!(rs_roi_res.rois, vec![0, 1]);
     assert_eq!(rs_roi_res.time_count, 4);
     assert_eq!(rs_roi_res.total_spots, 15);

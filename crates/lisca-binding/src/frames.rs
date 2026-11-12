@@ -79,7 +79,12 @@ pub fn available_times(root: &Path, position: u32, channel: u32) -> Vec<u32> {
     set.into_iter().collect()
 }
 
-pub fn load_stack(root: &Path, position: u32, channel: u32, time: u32) -> Result<Array3<f64>, String> {
+pub fn load_stack(
+    root: &Path,
+    position: u32,
+    channel: u32,
+    time: u32,
+) -> Result<Array3<f64>, String> {
     let mut matching: Vec<Frame> = find_frames(root)
         .into_iter()
         .filter(|f| f.position == position && f.channel == channel && f.time == time)

@@ -179,7 +179,11 @@ pub fn detect_spots_picasso(
 fn round_dec(v: f64, decimals: i32) -> f64 {
     let factor = 10f64.powi(decimals);
     let r = (v * factor).round() / factor;
-    if r == 0.0 { 0.0 } else { r }
+    if r == 0.0 {
+        0.0
+    } else {
+        r
+    }
 }
 
 pub fn write_picasso_spot_csv(output_path: &Path, spots: &[BindingSpot]) -> Result<(), String> {
@@ -220,6 +224,7 @@ pub fn write_picasso_spot_csv(output_path: &Path, spots: &[BindingSpot]) -> Resu
         .map_err(|e| format!("Failed to flush {}: {e}", output_path.display()))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn run_picasso_roi(
     input_dir: &Path,
     position: u32,
@@ -231,9 +236,8 @@ pub fn run_picasso_roi(
     all_rois: bool,
     all_times: bool,
 ) -> Result<PicassoRoiResult, String> {
-    let (rois, times) = resolve_roi_times(
-        input_dir, position, channel, roi, all_rois, all_times, time,
-    )?;
+    let (rois, times) =
+        resolve_roi_times(input_dir, position, channel, roi, all_rois, all_times, time)?;
 
     let mut total_spots = 0usize;
     let pos_label = format!("Pos{position}");

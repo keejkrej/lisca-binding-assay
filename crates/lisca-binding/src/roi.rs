@@ -144,7 +144,12 @@ pub(crate) fn decode_tiff_pages(path: &Path) -> Result<(Vec<Vec<f64>>, usize, us
             DecodingResult::I64(buf) => buf.into_iter().map(|v| v as f64).collect(),
             DecodingResult::F32(buf) => buf.into_iter().map(f64::from).collect(),
             DecodingResult::F64(buf) => buf,
-            _ => return Err(format!("Unsupported TIFF sample format in {}", path.display())),
+            _ => {
+                return Err(format!(
+                    "Unsupported TIFF sample format in {}",
+                    path.display()
+                ))
+            }
         };
         if page.len() != height * width {
             return Err(format!(
@@ -264,10 +269,7 @@ pub fn load_time_map(path: &Path) -> Result<BTreeMap<u32, f64>, String> {
         .iter()
         .position(|h| h == "t")
         .ok_or_else(|| "Time map CSV must contain a t column".to_string())?;
-    let real_idx = headers
-        .iter()
-        .position(|h| h == "t_real")
-        .unwrap_or(t_idx);
+    let real_idx = headers.iter().position(|h| h == "t_real").unwrap_or(t_idx);
 
     let mut map = BTreeMap::new();
     for record in reader.records() {
