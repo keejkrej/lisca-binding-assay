@@ -141,3 +141,7 @@ Theory + RD simulations (√t / Ward–Tordai, unit-cell RD solver, fits) live i
 | Single 2D plane | `general` | Full-field single plane |
 
 Multi-z volumetric Spotiflow (`smfish_3d`) lives on branch `3d` only.
+
+## Exploratory unpatterned LNP tracking
+
+Full-field ND2 detection, tracking, annotated movies and intensity-distribution plots are documented in [scripts/exploratory/unpatterned_lnp](scripts/exploratory/unpatterned_lnp/README.md). These dataset-specific scripts preserve the Spotiflow, Picasso and btrack analysis runs; they are separate from the patterned ROI workflow above.
